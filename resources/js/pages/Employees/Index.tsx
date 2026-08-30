@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     ChevronLeft,
@@ -23,6 +24,11 @@ type PageProps = {
     employees: Employee[];
 };
 
+type MenuPosition = {
+    top: number;
+    left: number;
+};
+
 const employmentTypeLabel: Record<Employee['employment_type'], string> = {
     regular: 'Regular',
     probationary: 'Probationary',
@@ -44,6 +50,7 @@ export default function Employees() {
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
     const [menuEmployee, setMenuEmployee] = useState<string | null>(null);
+    const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
 
     const filtered = useMemo(
         () =>
@@ -68,6 +75,28 @@ export default function Employees() {
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
+    useEffect(() => {
+        if (!menuEmployee) return;
+
+        const handleScroll = () => {
+            setMenuEmployee(null);
+            setMenuPosition(null);
+        };
+
+        const handleResize = () => {
+            setMenuEmployee(null);
+            setMenuPosition(null);
+        };
+
+        window.addEventListener('scroll', handleScroll, true);
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [menuEmployee]);
+
     const openAddDialog = () => {
         setEditingEmployee(null);
         setFormOpen(true);
@@ -75,8 +104,43 @@ export default function Employees() {
 
     const openEditDialog = (employee: Employee) => {
         setMenuEmployee(null);
+        setMenuPosition(null);
         setEditingEmployee(employee);
         setFormOpen(true);
+    };
+
+    const toggleMenu = (
+        employee: Employee,
+        event: React.MouseEvent<HTMLButtonElement>,
+    ) => {
+        if (menuEmployee === employee.id) {
+            setMenuEmployee(null);
+            setMenuPosition(null);
+            return;
+        }
+
+        const rect = event.currentTarget.getBoundingClientRect();
+        const menuWidth = 176;
+        const menuHeight = 128;
+        const spacing = 4;
+
+        const left = Math.min(
+            Math.max(8, rect.right - menuWidth),
+            window.innerWidth - menuWidth - 8,
+        );
+
+        const openAbove = rect.bottom + menuHeight > window.innerHeight - 8;
+        const top = openAbove
+            ? Math.max(8, rect.top - menuHeight - spacing)
+            : rect.bottom + spacing;
+
+        setMenuPosition({ top, left });
+        setMenuEmployee(employee.id);
+    };
+
+    const closeMenu = () => {
+        setMenuEmployee(null);
+        setMenuPosition(null);
     };
 
     const handleDelete = () => {
@@ -86,10 +150,14 @@ export default function Employees() {
             preserveScroll: true,
             onSuccess: () => {
                 setDeleteTarget(null);
-                setMenuEmployee(null);
+                closeMenu();
             },
         });
     };
+
+    const activeMenuEmployee = paginatedEmployees.find(
+        (employee) => employee.id === menuEmployee,
+    );
 
     return (
         <>
@@ -97,7 +165,7 @@ export default function Employees() {
 
             <div
                 className="min-h-svh bg-background font-sans"
-                onClick={() => setMenuEmployee(null)}
+                onClick={closeMenu}
             >
                 <Navbar />
                 <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -189,9 +257,7 @@ export default function Employees() {
                                                     <tr
                                                         key={employee.id}
                                                         className="border-b transition-colors hover:bg-muted/50"
-                                                        onClick={() =>
-                                                            setMenuEmployee(null)
-                                                        }
+                                                        onClick={() => closeMenu()}
                                                     >
                                                         <td className="whitespace-nowrap p-2 align-middle font-mono tabular-nums">
                                                             {employee.employee_id}
@@ -203,7 +269,7 @@ export default function Employees() {
                                                             <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium">
                                                                 {
                                                                     employmentTypeLabel[
-                                                                    employee.employment_type
+                                                                        employee.employment_type
                                                                     ]
                                                                 }
                                                             </span>
@@ -213,7 +279,7 @@ export default function Employees() {
                                                             <span className="ml-1 text-xs text-muted-foreground">
                                                                 /
                                                                 {employee.rate_type ===
-                                                                    'daily'
+                                                                'daily'
                                                                     ? 'day'
                                                                     : 'mo'}
                                                             </span>
@@ -238,59 +304,15 @@ export default function Employees() {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8"
-                                                                    onClick={() =>
-                                                                        setMenuEmployee(
-                                                                            menuEmployee ===
-                                                                                employee.id
-                                                                                ? null
-                                                                                : employee.id,
+                                                                    onClick={(event) =>
+                                                                        toggleMenu(
+                                                                            employee,
+                                                                            event,
                                                                         )
                                                                     }
                                                                 >
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
-
-                                                                {menuEmployee ===
-                                                                    employee.id && (
-                                                                        <div className="absolute right-0 z-50 mt-1 w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-                                                                            <Link
-                                                                                href={`/employees/${employee.id}/attendance`}
-                                                                                className="flex rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
-                                                                                onClick={() =>
-                                                                                    setMenuEmployee(
-                                                                                        null,
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                View attendance
-                                                                            </Link>
-                                                                            <button
-                                                                                type="button"
-                                                                                className="flex w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
-                                                                                onClick={() =>
-                                                                                    openEditDialog(
-                                                                                        employee,
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                Edit
-                                                                            </button>
-                                                                            <button
-                                                                                type="button"
-                                                                                className="flex w-full rounded-sm px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
-                                                                                onClick={() => {
-                                                                                    setDeleteTarget(
-                                                                                        employee,
-                                                                                    );
-                                                                                    setMenuEmployee(
-                                                                                        null,
-                                                                                    );
-                                                                                }}
-                                                                            >
-                                                                                Delete
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -341,6 +363,46 @@ export default function Employees() {
                         )}
                     </div>
                 </div>
+
+                {activeMenuEmployee && menuPosition &&
+                    createPortal(
+                        <div
+                            className="fixed z-[100] w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                            style={{
+                                top: menuPosition.top,
+                                left: menuPosition.left,
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <Link
+                                href={`/employees/${activeMenuEmployee.id}/attendance`}
+                                className="flex rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={closeMenu}
+                            >
+                                View attendance
+                            </Link>
+                            <button
+                                type="button"
+                                className="flex w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={() =>
+                                    openEditDialog(activeMenuEmployee)
+                                }
+                            >
+                                Edit
+                            </button>
+                            <button
+                                type="button"
+                                className="flex w-full rounded-sm px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
+                                onClick={() => {
+                                    setDeleteTarget(activeMenuEmployee);
+                                    closeMenu();
+                                }}
+                            >
+                                Delete
+                            </button>
+                        </div>,
+                        document.body,
+                    )}
 
                 <EmployeeFormDialog
                     open={formOpen}
