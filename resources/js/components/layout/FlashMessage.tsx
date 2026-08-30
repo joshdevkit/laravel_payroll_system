@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, X, XCircle } from 'lucide-react';
-import { usePage } from '@inertiajs/react';
 
 interface FlashProps {
     success?: string | null;
     error?: string | null;
 }
 
-interface PageProps {
+interface FlashMessageProps {
     flash?: FlashProps;
 }
 
-export function FlashMessage() {
-    const { flash } = usePage<PageProps>().props;
+export function FlashMessage({ flash }: FlashMessageProps) {
     const [visible, setVisible] = useState(false);
 
     const message = flash?.success || flash?.error || null;
@@ -25,6 +23,7 @@ export function FlashMessage() {
         }
 
         setVisible(true);
+
         const timeout = window.setTimeout(() => setVisible(false), 3000);
 
         return () => window.clearTimeout(timeout);
