@@ -109,33 +109,49 @@ return new class extends Migration
         });
 
         Schema::create('payroll_settings', function (Blueprint $table) {
-            $table->boolean('id')->primary()->default(true);
+            $table->id();
+
             $table->decimal('daily_work_hours', 6, 2)->default(8);
+
+            $table->boolean('late_enabled')->default(true);
+            $table->boolean('undertime_enabled')->default(true);
             $table->boolean('overtime_enabled')->default(true);
+
             $table->decimal('overtime_multiplier', 8, 4)->default(1.25);
             $table->unsignedInteger('overtime_threshold_minutes')->default(0);
             $table->unsignedInteger('late_grace_minutes')->default(0);
+            $table->unsignedInteger('unpaid_break_minutes')->default(60);
+
             $table->boolean('night_diff_enabled')->default(true);
             $table->time('night_diff_start')->default('22:00:00');
             $table->time('night_diff_end')->default('06:00:00');
             $table->decimal('night_diff_multiplier', 8, 4)->default(0.10);
+
             $table->boolean('holiday_pay_enabled')->default(true);
             $table->decimal('holiday_regular_multiplier', 8, 4)->default(2.00);
             $table->decimal('holiday_special_multiplier', 8, 4)->default(1.30);
+
             $table->boolean('leave_pay_enabled')->default(true);
             $table->decimal('monthly_daily_rate_divisor', 8, 2)->default(26);
+
+            $table->json('work_schedule')->nullable();
+            $table->json('shift_options')->nullable();
+
             $table->string('attendance_import_start_cell')->default('C3');
             $table->string('schedule_import_start_cell')->default('C3');
+
             $table->timestamps();
         });
 
         DB::table('payroll_settings')->insert([
-            'id' => true,
             'daily_work_hours' => 8,
+            'late_enabled' => true,
+            'undertime_enabled' => true,
             'overtime_enabled' => true,
             'overtime_multiplier' => 1.25,
             'overtime_threshold_minutes' => 0,
             'late_grace_minutes' => 0,
+            'unpaid_break_minutes' => 60,
             'night_diff_enabled' => true,
             'night_diff_start' => '22:00:00',
             'night_diff_end' => '06:00:00',
@@ -145,6 +161,8 @@ return new class extends Migration
             'holiday_special_multiplier' => 1.30,
             'leave_pay_enabled' => true,
             'monthly_daily_rate_divisor' => 26,
+            'work_schedule' => null,
+            'shift_options' => null,
             'attendance_import_start_cell' => 'C3',
             'schedule_import_start_cell' => 'C3',
             'created_at' => now(),
