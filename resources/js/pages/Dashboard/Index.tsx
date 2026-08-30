@@ -5,6 +5,8 @@ import {
     type PayrollSummary,
 } from '@/components/dashboard/PayrollLedgerCard';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { usePage } from '@inertiajs/react';
+import {  User } from '@/types/auth';
 
 interface RecentPayrollRun {
     id: string;
@@ -25,6 +27,15 @@ interface Holiday {
     name: string;
     date: string;
 }
+
+type PageProps = {
+    auth?: {
+        user?: {
+            name?: string;
+            email?: string;
+        };
+    };
+};
 
 const formatPeso = (amount: number) =>
     new Intl.NumberFormat('en-PH', {
@@ -95,6 +106,7 @@ const upcomingHolidays: Holiday[] = [
 ];
 
 export default function Index() {
+     const { auth } = usePage<PageProps>().props;
     return (
         <div className="min-h-svh bg-background font-sans">
             <Navbar />
@@ -105,7 +117,7 @@ export default function Index() {
                         Dashboard
                     </p>
                     <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
-                        Good day, Admin
+                        Good day, {auth?.user?.name || auth?.user?.email?.split('@')[0]}!
                     </h1>
                 </div>
 

@@ -62,7 +62,7 @@ export function Navbar() {
                 <div className="flex min-w-0 items-center gap-8">
                     <Link href="/dashboard" className="shrink-0">
                         <span className="font-display text-sm font-semibold uppercase tracking-[0.15em]">
-                            Payroll System
+                            {import.meta.env.VITE_APP_NAME}
                         </span>
                     </Link>
 
