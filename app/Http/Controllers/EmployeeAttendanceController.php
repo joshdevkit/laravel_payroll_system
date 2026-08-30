@@ -74,14 +74,18 @@ class EmployeeAttendanceController extends Controller
     {
         $validated = $request->validate([
             'rows' => ['required', 'array', 'min:1'],
-            'rows.*.date' => ['required', 'date_format:Y-m-d'],
+            'rows.*.date' => ['required', 'date'],
             'rows.*.time_in' => ['nullable', 'date_format:H:i:s'],
             'rows.*.time_out' => ['nullable', 'date_format:H:i:s'],
             'rows.*.segment_no' => ['required', 'integer', 'min:1'],
             'rows.*.status' => ['required', 'in:present,absent,on_leave,holiday'],
         ]);
 
-        $rows = collect($validated['rows']);
+        $rows = collect($validated['rows'])->map(function (array $row) {
+            $row['date'] = Carbon::parse($row['date'])->format('Y-m-d');
+
+            return $row;
+        });
 
         DB::transaction(function () use ($rows, $employee) {
             $rows->each(function (array $row) use ($employee) {
