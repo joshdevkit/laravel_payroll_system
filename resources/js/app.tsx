@@ -18,8 +18,8 @@ void createInertiaApp({
     setup({ el, App, props }) {
         createRoot(el).render(
             <>
-                <FlashMessage />
                 <App {...props} />
+                <FlashMessage flash={props.flash} />
             </>,
         );
     },
