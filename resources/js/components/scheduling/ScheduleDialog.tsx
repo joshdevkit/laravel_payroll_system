@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { route } from 'ziggy-js';
 import {
     formatScheduleDuration,
     isOvernightSchedule,
@@ -186,9 +185,9 @@ export function ScheduleDialog({
         };
 
         if (schedule) {
-            router.put(route('schedules.update', schedule.id), data, options);
+            router.put('/schedules/' + schedule.id, data, options);
         } else {
-            router.post(route('schedules.store'), data, options);
+            router.post('/schedules', data, options);
         }
     };
 
@@ -196,7 +195,7 @@ export function ScheduleDialog({
         if (!schedule || submitting) return;
 
         setSubmitting(true);
-        router.delete(route('schedules.destroy', schedule.id), {
+        router.delete('/schedules/' + schedule.id, {
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
             onFinish: () => setSubmitting(false),

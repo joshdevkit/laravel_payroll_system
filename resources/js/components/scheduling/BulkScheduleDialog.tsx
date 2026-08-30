@@ -1,7 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { router } from '@inertiajs/react';
-import { route } from 'ziggy-js';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -118,7 +117,7 @@ export function BulkScheduleDialog({
         );
 
         router.post(
-            route('schedules.bulk-store'),
+            '/schedules/bulk',
             { schedules },
             {
                 preserveScroll: true,

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FileSpreadsheet, Plus } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
-import { route } from 'ziggy-js';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,7 +65,7 @@ export default function Scheduling({ employees, schedules }: Props) {
 
     useEffect(() => {
         router.get(
-            route('schedules.index'),
+            '/scheduling',
             {
                 start_date: visibleRange.start,
                 end_date: visibleRange.end,
@@ -162,7 +161,7 @@ export default function Scheduling({ employees, schedules }: Props) {
                         {visibleRange.end}.
                     </span>
                     <Link
-                        href={route('employees.index')}
+                        href="/employees"
                         className="font-medium text-primary hover:underline"
                     >
                         Manage employees
