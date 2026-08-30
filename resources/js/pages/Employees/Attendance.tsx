@@ -10,6 +10,7 @@ import { AttendanceSummary, type AttendanceSummaryData } from '@/components/empl
 import { EmployeeAttendanceTable, type AttendanceRecord } from '@/components/employees/EmployeeAttendanceTable';
 import { DeleteAttendanceDialog } from '@/components/employees/DeleteAttendanceDialog';
 import { ImportAttendanceDialog } from '@/components/employees/ImportAttendanceDialog';
+import { FlashMessage } from '@/components/layout/FlashMessage';
 
 const PAGE_SIZE = 10;
 
@@ -99,6 +100,8 @@ export default function Attendance({ employee, records, attendanceImportStartCel
     };
 
     return (
+        <>
+        <FlashMessage />
         <div className="min-h-svh bg-background font-sans">
             <Navbar />
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -184,5 +187,6 @@ export default function Attendance({ employee, records, attendanceImportStartCel
                 onConfirm={handleDelete}
             />
         </div>
+        </>
     );
 }

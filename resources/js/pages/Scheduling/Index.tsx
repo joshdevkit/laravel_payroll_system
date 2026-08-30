@@ -29,6 +29,7 @@ import {
     monthStart,
     todayInManila,
 } from '@/components/scheduling/schedule-utils';
+import { FlashMessage } from '@/components/layout/FlashMessage';
 
 type Employee = ScheduleEmployee & {
     employee_id?: string;
@@ -109,6 +110,9 @@ export default function Scheduling({ employees, schedules }: Props) {
     };
 
     return (
+        <>
+        <FlashMessage />
+        
         <div className="min-h-svh bg-background font-sans">
             <Navbar />
 
@@ -236,5 +240,6 @@ export default function Scheduling({ employees, schedules }: Props) {
                 </DialogContent>
             </Dialog>
         </div>
+        </>
     );
 }
