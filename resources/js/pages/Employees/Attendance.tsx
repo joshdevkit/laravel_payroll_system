@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
-import { ArrowLeft, CalendarDays } from 'lucide-react';
+import { ArrowLeft, CalendarDays, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
@@ -9,18 +9,24 @@ import { AttendancePagination } from '@/components/employees/AttendancePaginatio
 import { AttendanceSummary, type AttendanceSummaryData } from '@/components/employees/AttendanceSummary';
 import { EmployeeAttendanceTable, type AttendanceRecord } from '@/components/employees/EmployeeAttendanceTable';
 import { DeleteAttendanceDialog } from '@/components/employees/DeleteAttendanceDialog';
+import { ImportAttendanceDialog } from '@/components/employees/ImportAttendanceDialog';
 
 const PAGE_SIZE = 10;
 
 type Employee = { id: string; employee_id: string; full_name: string };
-type AttendancePageProps = { employee: Employee; records: AttendanceRecord[] };
+type AttendancePageProps = {
+    employee: Employee;
+    records: AttendanceRecord[];
+    attendanceImportStartCell?: string;
+};
 
-export default function Attendance({ employee, records }: AttendancePageProps) {
+export default function Attendance({ employee, records, attendanceImportStartCell = 'C3' }: AttendancePageProps) {
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
     const [page, setPage] = useState(1);
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
 
     const filteredRecords = useMemo(
         () => records.filter((record) => (!fromDate || record.date >= fromDate) && (!toDate || record.date <= toDate)),
@@ -114,6 +120,10 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
                             Attendance history used by payroll calculations. Multiple segments can be recorded for the same work date.
                         </p>
                     </div>
+                    <Button onClick={() => setImportOpen(true)}>
+                        <FileUp className="mr-2 h-4 w-4" />
+                        Import Attendance
+                    </Button>
                 </div>
 
                 <AttendanceSummary summary={summary} totalRecords={records.length} filtered={Boolean(fromDate || toDate)} />
@@ -157,6 +167,13 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            <ImportAttendanceDialog
+                open={importOpen}
+                onOpenChange={setImportOpen}
+                employeeId={employee.id}
+                startingCell={attendanceImportStartCell}
+            />
 
             <DeleteAttendanceDialog
                 open={Boolean(deleteTarget)}
