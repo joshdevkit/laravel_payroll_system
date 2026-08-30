@@ -2,37 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { ArrowLeft, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
 import { AttendanceDateFilter } from '@/components/employees/AttendanceDateFilter';
 import { AttendancePagination } from '@/components/employees/AttendancePagination';
-import {
-    AttendanceSummary,
-    type AttendanceSummaryData,
-} from '@/components/employees/AttendanceSummary';
-import {
-    EmployeeAttendanceTable,
-    type AttendanceRecord,
-} from '@/components/employees/EmployeeAttendanceTable';
+import { AttendanceSummary, type AttendanceSummaryData } from '@/components/employees/AttendanceSummary';
+import { EmployeeAttendanceTable, type AttendanceRecord } from '@/components/employees/EmployeeAttendanceTable';
 import { DeleteAttendanceDialog } from '@/components/employees/DeleteAttendanceDialog';
 
 const PAGE_SIZE = 10;
 
-type Employee = {
-    id: string;
-    employee_id: string;
-    full_name: string;
-};
-
-type AttendancePageProps = {
-    employee: Employee;
-    records: AttendanceRecord[];
-};
+type Employee = { id: string; employee_id: string; full_name: string };
+type AttendancePageProps = { employee: Employee; records: AttendanceRecord[] };
 
 export default function Attendance({ employee, records }: AttendancePageProps) {
     const [fromDate, setFromDate] = useState('');
@@ -42,23 +23,13 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
     const [deleting, setDeleting] = useState(false);
 
     const filteredRecords = useMemo(
-        () =>
-            records.filter((record) => {
-                if (fromDate && record.date < fromDate) return false;
-                if (toDate && record.date > toDate) return false;
-                return true;
-            }),
+        () => records.filter((record) => (!fromDate || record.date >= fromDate) && (!toDate || record.date <= toDate)),
         [records, fromDate, toDate],
     );
 
-    useEffect(() => {
-        setPage(1);
-    }, [fromDate, toDate]);
+    useEffect(() => setPage(1), [fromDate, toDate]);
 
-    const pageCount = Math.max(
-        1,
-        Math.ceil(filteredRecords.length / PAGE_SIZE),
-    );
+    const pageCount = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
 
     useEffect(() => {
         if (page > pageCount) setPage(pageCount);
@@ -81,14 +52,10 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
             if (record.status === 'present') presentDates.add(record.date);
             if (record.status === 'absent') absentDates.add(record.date);
             if (record.status === 'on_leave') leaveDates.add(record.date);
-
             lateMinutes += Number(record.late_minutes ?? 0);
             undertimeMinutes += Number(record.undertime_minutes ?? 0);
 
-            if (record.status !== 'present' || !record.time_in || !record.time_out) {
-                continue;
-            }
-
+            if (record.status !== 'present' || !record.time_in || !record.time_out) continue;
             const start = new Date(record.time_in);
             const end = new Date(record.time_out);
             if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue;
@@ -111,7 +78,6 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
 
     const handleDelete = () => {
         if (!deleteTarget) return;
-
         setDeleting(true);
         router.delete(`/employees/${employee.id}/attendance/${deleteTarget}`, {
             preserveScroll: true,
@@ -129,39 +95,27 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
     return (
         <div className="min-h-svh bg-background font-sans">
             <Navbar />
-
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
                 <Button
-                    asChild
+                    render={<a href="/employees" />}
                     variant="ghost"
                     className="-ml-3 text-muted-foreground"
                 >
-                    <a href="/employees">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Employees
-                    </a>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Employees
                 </Button>
 
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                            Attendance
-                        </p>
-                        <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
-                            {employee.full_name}
-                        </h1>
+                        <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">Attendance</p>
+                        <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">{employee.full_name}</h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Attendance history used by payroll calculations. Multiple segments can be recorded for the same work date.
                         </p>
                     </div>
                 </div>
 
-                <AttendanceSummary
-                    summary={summary}
-                    totalRecords={records.length}
-                    filtered={Boolean(fromDate || toDate)}
-                />
-
+                <AttendanceSummary summary={summary} totalRecords={records.length} filtered={Boolean(fromDate || toDate)} />
                 <AttendanceDateFilter
                     fromDate={fromDate}
                     toDate={toDate}
@@ -174,17 +128,13 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
 
                 <Card className="mt-6">
                     <CardHeader>
-                        <CardTitle className="font-display text-base">
-                            Attendance records
-                        </CardTitle>
+                        <CardTitle className="font-display text-base">Attendance records</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         {filteredRecords.length === 0 ? (
                             <div className="p-10 text-center">
                                 <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground" />
-                                <p className="mt-2 text-sm font-medium">
-                                    No attendance records found
-                                </p>
+                                <p className="mt-2 text-sm font-medium">No attendance records found</p>
                                 <p className="mt-1 text-xs text-muted-foreground">
                                     {fromDate || toDate
                                         ? 'No attendance records match the selected date range.'
@@ -193,10 +143,7 @@ export default function Attendance({ employee, records }: AttendancePageProps) {
                             </div>
                         ) : (
                             <>
-                                <EmployeeAttendanceTable
-                                    records={paginatedRecords}
-                                    onDelete={setDeleteTarget}
-                                />
+                                <EmployeeAttendanceTable records={paginatedRecords} onDelete={setDeleteTarget} />
                                 <AttendancePagination
                                     page={page}
                                     pageCount={pageCount}
