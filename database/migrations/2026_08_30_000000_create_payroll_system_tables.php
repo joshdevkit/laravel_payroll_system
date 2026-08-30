@@ -110,23 +110,23 @@ return new class extends Migration
 
         Schema::create('payroll_settings', function (Blueprint $table) {
             $table->id();
-            $table->decimal('daily_work_hours', 6, 2)->default(8);
+            $table->integer('daily_work_hours')->default(8);
             $table->boolean('late_enabled')->default(true);
             $table->boolean('undertime_enabled')->default(true);
             $table->boolean('overtime_enabled')->default(true);
-            $table->decimal('overtime_multiplier', 8, 4)->default(1.25);
+            $table->decimal('overtime_multiplier', 10, 2)->default(1.25);
             $table->unsignedInteger('overtime_threshold_minutes')->default(0);
             $table->unsignedInteger('late_grace_minutes')->default(0);
             $table->unsignedInteger('unpaid_break_minutes')->default(60);
             $table->boolean('night_diff_enabled')->default(true);
             $table->time('night_diff_start')->default('22:00');
             $table->time('night_diff_end')->default('06:00');
-            $table->decimal('night_diff_multiplier', 8, 4)->default(0.10);
+            $table->decimal('night_diff_multiplier', 10, 2)->default(0.1);
             $table->boolean('holiday_pay_enabled')->default(true);
-            $table->decimal('holiday_regular_multiplier', 8, 4)->default(2.00);
-            $table->decimal('holiday_special_multiplier', 8, 4)->default(1.30);
+            $table->integer('holiday_regular_multiplier')->default(2.0);
+            $table->integer('holiday_special_multiplier')->default(1.3);
             $table->boolean('leave_pay_enabled')->default(true);
-            $table->decimal('monthly_daily_rate_divisor', 8, 2)->default(26);
+            $table->integer('monthly_daily_rate_divisor')->default(26);
             $table->json('work_schedule')->nullable();
             $table->json('shift_options')->nullable();
             $table->string('attendance_import_start_cell')->default('C3');

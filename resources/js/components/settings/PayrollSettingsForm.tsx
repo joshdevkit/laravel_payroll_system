@@ -32,23 +32,23 @@ function Toggle({ enabled, onChange }: ToggleProps) {
 }
 
 export type PayrollSettings = {
-    daily_work_hours: number | string;
+    daily_work_hours: number;
     late_enabled: boolean;
     undertime_enabled: boolean;
     overtime_enabled: boolean;
-    overtime_multiplier: number | string;
+    overtime_multiplier: number;
     overtime_threshold_minutes: number;
     late_grace_minutes: number;
     unpaid_break_minutes: number;
     night_diff_enabled: boolean;
     night_diff_start: string;
     night_diff_end: string;
-    night_diff_multiplier: number | string;
+    night_diff_multiplier: number;
     holiday_pay_enabled: boolean;
-    holiday_regular_multiplier: number | string;
-    holiday_special_multiplier: number | string;
+    holiday_regular_multiplier: number;
+    holiday_special_multiplier: number;
     leave_pay_enabled: boolean;
-    monthly_daily_rate_divisor: number | string;
+    monthly_daily_rate_divisor: number;
     work_schedule: Record<string, unknown> | null;
     shift_options: unknown[] | null;
     attendance_import_start_cell: string;
@@ -87,9 +87,6 @@ export function PayrollSettingsForm({
     const save = () => {
         setSaving(true);
 
-        // Inertia can send nested arrays/objects as request data. Do not
-        // JSON.stringify these values: Laravel validates them as arrays and
-        // Eloquent's casts then handles JSON storage automatically.
         const payload = {
             ...settings,
             daily_work_hours: number(settings.daily_work_hours),
@@ -196,10 +193,9 @@ export function PayrollSettingsForm({
                             <Input
                                 type="number"
                                 min="0"
-                                step="0.05"
                                 value={settings.overtime_multiplier}
                                 onChange={(e) =>
-                                    set('overtime_multiplier', e.target.value)
+                                    set('overtime_multiplier', Number(e.target.value),)
                                 }
                             />
                         </Field>
@@ -222,12 +218,11 @@ export function PayrollSettingsForm({
                             <Input
                                 type="number"
                                 min="1"
-                                step="0.01"
                                 value={settings.monthly_daily_rate_divisor}
                                 onChange={(e) =>
                                     set(
                                         'monthly_daily_rate_divisor',
-                                        e.target.value,
+                                        Number(e.target.value),
                                     )
                                 }
                             />
@@ -271,10 +266,9 @@ export function PayrollSettingsForm({
                             <Input
                                 type="number"
                                 min="0"
-                                step="0.01"
                                 value={settings.night_diff_multiplier}
                                 onChange={(e) =>
-                                    set('night_diff_multiplier', e.target.value)
+                                    set('night_diff_multiplier', Number(e.target.value))
                                 }
                             />
                         </Field>
@@ -296,12 +290,11 @@ export function PayrollSettingsForm({
                             <Input
                                 type="number"
                                 min="0"
-                                step="0.05"
                                 value={settings.holiday_regular_multiplier}
                                 onChange={(e) =>
                                     set(
                                         'holiday_regular_multiplier',
-                                        e.target.value,
+                                        Number(e.target.value),
                                     )
                                 }
                             />
@@ -316,7 +309,7 @@ export function PayrollSettingsForm({
                                 onChange={(e) =>
                                     set(
                                         'holiday_special_multiplier',
-                                        e.target.value,
+                                        Number(e.target.value),
                                     )
                                 }
                             />
