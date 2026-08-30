@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\SchedulingController;
@@ -16,6 +17,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/logout', [AuthenticationController::class, 'logout'])->name('logout');
     Route::resource('employees', EmployeeController::class);
+
+    Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])
+        ->name('employees.attendance.index');
+    Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])
+        ->name('employees.attendance.destroy');
 
     Route::get('/scheduling', [SchedulingController::class, 'index'])->name('schedules.index');
     Route::post('/scheduling', [SchedulingController::class, 'store'])->name('schedules.store');
