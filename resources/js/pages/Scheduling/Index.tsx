@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FileSpreadsheet, Plus } from 'lucide-react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,8 +43,7 @@ type Props = {
     } | null;
 };
 
-export default function Scheduling() {
-    const { employees, schedules } = usePage<Props>().props;
+export default function Scheduling({ employees, schedules }: Props) {
     const [selectedDate, setSelectedDate] = useState(todayInManila());
     const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
