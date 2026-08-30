@@ -1,36 +1,42 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2, X, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react'
+import { CheckCircle2, X, XCircle } from 'lucide-react'
+import { usePage } from '@inertiajs/react'
 
 interface FlashProps {
-    success?: string | null;
-    error?: string | null;
+    success?: string | null
+    error?: string | null
 }
 
-interface FlashMessageProps {
-    flash?: FlashProps;
+interface PageProps {
+    [key: string]: unknown
+    flash?: FlashProps
 }
 
-export function FlashMessage({ flash }: FlashMessageProps) {
-    const [visible, setVisible] = useState(false);
+export function FlashMessage() {
+    const { flash } = usePage<PageProps>().props
 
-    const message = flash?.success || flash?.error || null;
-    const isError = Boolean(flash?.error && !flash?.success);
+    const [visible, setVisible] = useState(false)
+
+    const message = flash?.success || flash?.error || null
+    const isError = Boolean(flash?.error && !flash?.success)
 
     useEffect(() => {
         if (!message) {
-            setVisible(false);
-            return;
+            setVisible(false)
+            return
         }
 
-        setVisible(true);
+        setVisible(true)
 
-        const timeout = window.setTimeout(() => setVisible(false), 3000);
+        const timeout = window.setTimeout(() => {
+            setVisible(false)
+        }, 3000)
 
-        return () => window.clearTimeout(timeout);
-    }, [message]);
+        return () => window.clearTimeout(timeout)
+    }, [message])
 
     if (!message || !visible) {
-        return null;
+        return null
     }
 
     return (
@@ -61,5 +67,5 @@ export function FlashMessage({ flash }: FlashMessageProps) {
                 </button>
             </div>
         </div>
-    );
+    )
 }

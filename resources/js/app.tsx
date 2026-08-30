@@ -1,26 +1,30 @@
-import { createInertiaApp } from '@inertiajs/react';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { createRoot } from 'react-dom/client';
-import { FlashMessage } from './components/layout/FlashMessage';
+import { createInertiaApp } from '@inertiajs/react'
+import { createRoot } from 'react-dom/client'
 
-const appName = import.meta.env.VITE_APP_NAME || 'Payroll System';
+const appName = import.meta.env.VITE_APP_NAME || 'Payroll System'
 
-void createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
-    resolve: (name) =>
-        resolvePageComponent(
-            `./pages/${name}.tsx`,
-            import.meta.glob('./pages/**/*.tsx'),
-        ),
+createInertiaApp({
+    title: (title) => title ? `${title} - ${appName}` : appName,
+
+    resolve: (name) => {
+        const pages = import.meta.glob('./Pages/**/*.tsx')
+        const importPage = pages[`./Pages/${name}.tsx`]
+
+        if (!importPage) {
+            throw new Error(
+                `Page component "./Pages/${name}.tsx" could not be found.`,
+            )
+        }
+
+        return importPage() as Promise<any>
+    },
+
+    setup({ el, App, props }) {
+        createRoot(el).render(<App {...props} />)
+    },
+
     progress: {
         color: '#4B5563',
+        showSpinner: false,
     },
-    setup({ el, App, props }) {
-        createRoot(el).render(
-            <>
-                <App {...props} />
-                <FlashMessage flash={props.flash} />
-            </>,
-        );
-    },
-});
+})
