@@ -146,7 +146,10 @@ export function normalizeSpreadsheetDate(value: unknown): string {
         return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
     }
 
-    const parts = raw.split(/[./-]/).map(Number);
+    // Excel commonly formats dates as M/D/YY when the cell has a short-date
+    // format. Accept that representation as well as M/D/YYYY and normalize it
+    // to the YYYY-MM-DD format expected by Laravel/MySQL.
+    const parts = raw.split(/[./-]/).map((part) => Number(part.trim()));
 
     if (parts.length === 3 && parts.every(Number.isFinite)) {
         let year: number;
@@ -159,6 +162,15 @@ export function normalizeSpreadsheetDate(value: unknown): string {
             day = parts[2];
         } else if (String(parts[2]).length === 4) {
             year = parts[2];
+            month = parts[0];
+            day = parts[1];
+        } else if (
+            String(parts[2]).length === 1 ||
+            String(parts[2]).length === 2
+        ) {
+            // Two-digit Excel dates such as 9/1/26 represent 2026-09-01.
+            // Payroll data is expected to use modern dates, so map YY to 20YY.
+            year = 2000 + parts[2];
             month = parts[0];
             day = parts[1];
         } else {
