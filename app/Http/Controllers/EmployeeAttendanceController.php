@@ -38,7 +38,7 @@ class EmployeeAttendanceController extends Controller
                         $scheduledEnd->addDay();
                     }
 
-                    $undertimeMinutes = max(0, $actualOut->diffInMinutes($scheduledEnd, false) * -1);
+                    $undertimeMinutes = max(0, -$scheduledEnd->diffInMinutes($actualOut, false));
                 }
 
                 return [
