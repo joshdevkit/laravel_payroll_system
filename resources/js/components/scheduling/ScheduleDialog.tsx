@@ -185,9 +185,9 @@ export function ScheduleDialog({
         };
 
         if (schedule) {
-            router.put('/schedules/' + schedule.id, data, options);
+            router.put('/scheduling/' + schedule.id, data, options);
         } else {
-            router.post('/schedules', data, options);
+            router.post('/scheduling', data, options);
         }
     };
 
@@ -195,7 +195,7 @@ export function ScheduleDialog({
         if (!schedule || submitting) return;
 
         setSubmitting(true);
-        router.delete('/schedules/' + schedule.id, {
+        router.delete('/scheduling/' + schedule.id, {
             preserveScroll: true,
             onSuccess: () => onOpenChange(false),
             onFinish: () => setSubmitting(false),
