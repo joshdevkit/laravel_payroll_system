@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { router } from '@inertiajs/react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,19 +29,38 @@ type Props = {
     startingCell: string;
 };
 
-const validStatuses: AttendanceStatus[] = ['present', 'absent', 'on_leave', 'holiday'];
+const validStatuses: AttendanceStatus[] = [
+    'present',
+    'absent',
+    'on_leave',
+    'holiday',
+];
 
 const parseStartingCell = (cell: string) => {
     const match = /^([A-Z]+)(\d+)$/i.exec(cell.trim());
-    if (!match) throw new Error(`Invalid starting cell "${cell}". Use an Excel cell such as C3.`);
+    if (!match) {
+        throw new Error(
+            `Invalid starting cell "${cell}". Use an Excel cell such as C3.`,
+        );
+    }
 
     let column = 0;
-    for (const character of match[1].toUpperCase()) column = column * 26 + character.charCodeAt(0) - 64;
+    for (const character of match[1].toUpperCase()) {
+        column = column * 26 + character.charCodeAt(0) - 64;
+    }
+
     return { row: Number(match[2]) - 1, column: column - 1 };
 };
 
 const normalizeDate = (value: unknown): string => {
-    if (value === null || value === undefined || String(value).trim() === '') throw new Error('Date value is required.');
+    if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ''
+    ) {
+        throw new Error('Date value is required.');
+    }
+
     const raw = String(value).trim();
     const numeric = typeof value === 'number' ? value : Number(raw);
 
@@ -52,10 +71,16 @@ const normalizeDate = (value: unknown): string => {
     }
 
     const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(raw);
-    if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+    if (iso) {
+        return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+    }
 
     const parts = raw.split(/[./-]/).map(Number);
-    if (parts.length === 3 && parts.every(Number.isFinite) && String(parts[2]).length === 4) {
+    if (
+        parts.length === 3 &&
+        parts.every(Number.isFinite) &&
+        String(parts[2]).length === 4
+    ) {
         return `${parts[2]}-${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}`;
     }
 
@@ -63,7 +88,10 @@ const normalizeDate = (value: unknown): string => {
 };
 
 const normalizeTime = (value: unknown): string | null => {
-    if (value === null || value === undefined || String(value).trim() === '') return null;
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return null;
+    }
+
     const raw = String(value).trim();
     const numeric = typeof value === 'number' ? value : Number(raw);
 
@@ -78,10 +106,14 @@ const normalizeTime = (value: unknown): string | null => {
     let hour = Number(match[1]);
     const minute = Number(match[2] ?? 0);
     const meridiem = match[3]?.toUpperCase();
+
     if (minute > 59) throw new Error(`Invalid minute in time "${value}".`);
 
     if (meridiem) {
-        if (hour < 1 || hour > 12) throw new Error(`Invalid 12-hour time "${value}".`);
+        if (hour < 1 || hour > 12) {
+            throw new Error(`Invalid 12-hour time "${value}".`);
+        }
+
         if (meridiem === 'AM') hour = hour === 12 ? 0 : hour;
         else hour = hour === 12 ? 12 : hour + 12;
     } else if (hour > 23) {
@@ -91,7 +123,12 @@ const normalizeTime = (value: unknown): string | null => {
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
 };
 
-export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startingCell }: Props) {
+export function ImportAttendanceDialog({
+    open,
+    onOpenChange,
+    employeeId,
+    startingCell,
+}: Props) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [fileName, setFileName] = useState('');
     const [previewCount, setPreviewCount] = useState(0);
@@ -118,22 +155,46 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
         setFileName(file.name);
 
         try {
-            const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
+            const workbook = XLSX.read(await file.arrayBuffer(), {
+                type: 'array',
+                cellDates: false,
+            });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            if (!sheet) throw new Error('The workbook does not contain a worksheet.');
+            if (!sheet) {
+                throw new Error('The workbook does not contain a worksheet.');
+            }
 
-            const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: '' });
-            const { row: startRow, column: startColumn } = parseStartingCell(startingCell);
+            const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+                header: 1,
+                raw: false,
+                defval: '',
+            });
+            const { row: startRow, column: startColumn } =
+                parseStartingCell(startingCell);
             const selected = grid
                 .slice(startRow)
-                .map((row) => row.slice(startColumn).map((value) => String(value ?? '').trim()))
+                .map((row) =>
+                    row
+                        .slice(startColumn)
+                        .map((value) => String(value ?? '').trim()),
+                )
                 .filter((row) => row.some(Boolean));
 
-            if (selected.length < 2) throw new Error(`No importable data was found starting at ${startingCell}. The starting row must contain the headers.`);
+            if (selected.length < 2) {
+                throw new Error(
+                    `No importable data was found starting at ${startingCell}. The starting row must contain the headers.`,
+                );
+            }
 
-            const headers = selected[0].map((header) => header.toLowerCase().replace(/\s+/g, '_'));
-            const missing = ['date', 'time_in', 'time_out'].filter((header) => !headers.includes(header));
-            if (missing.length) throw new Error(`Missing required columns: ${missing.join(', ')}`);
+            const headers = selected[0].map((header) =>
+                header.toLowerCase().replace(/\s+/g, '_'),
+            );
+            const missing = ['date', 'time_in', 'time_out'].filter(
+                (header) => !headers.includes(header),
+            );
+            if (missing.length) {
+                throw new Error(`Missing required columns: ${missing.join(', ')}`);
+            }
 
             const indexOf = (header: string) => headers.indexOf(header);
             const parsed = selected.slice(1).map((values, index) => {
@@ -144,9 +205,23 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
                 const status = (values[indexOf('status')] || 'present').toLowerCase() as AttendanceStatus;
                 const segment = Number(segmentValue);
 
-                if (!Number.isInteger(segment) || segment < 1) throw new Error(`Invalid segment on row ${index + startRow + 3}.`);
-                if (!validStatuses.includes(status)) throw new Error(`Invalid status on row ${index + startRow + 3}.`);
-                return { date, time_in: timeIn, time_out: timeOut, segment_no: segment, status };
+                if (!Number.isInteger(segment) || segment < 1) {
+                    throw new Error(
+                        `Invalid segment on row ${index + startRow + 3}.`,
+                    );
+                }
+
+                if (!validStatuses.includes(status)) {
+                    throw new Error(`Invalid status on row ${index + startRow + 3}.`);
+                }
+
+                return {
+                    date,
+                    time_in: timeIn,
+                    time_out: timeOut,
+                    segment_no: segment,
+                    status,
+                };
             });
 
             setRows(parsed);
@@ -154,46 +229,42 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
         } catch (fileError) {
             setRows([]);
             setPreviewCount(0);
-            setError(fileError instanceof Error ? fileError.message : 'Unable to read the spreadsheet file.');
+            setError(
+                fileError instanceof Error
+                    ? fileError.message
+                    : 'Unable to read the spreadsheet file.',
+            );
         }
     };
 
     const handleImport = () => {
         if (!employeeId) return setError('Employee could not be identified.');
-        if (!rows.length) return setError('Please select an attendance CSV or Excel file first.');
+        if (!rows.length) {
+            return setError(
+                'Please select an attendance CSV or Excel file first.',
+            );
+        }
 
         setImporting(true);
         setError(null);
-        router.post(`/employees/${employeeId}/attendance/import`, { rows }, {
-            preserveScroll: true,
-            onSuccess: () => handleOpenChange(false),
-            onError: (errors) => {
-                const firstError = Object.values(errors)[0];
-                setError(Array.isArray(firstError) ? firstError[0] : firstError ?? 'Unable to import attendance.');
+
+        router.post(
+            `/employees/${employeeId}/attendance/import`,
+            { rows },
+            {
+                preserveScroll: true,
+                onSuccess: () => handleOpenChange(false),
+                onError: (errors) => {
+                    const firstError = Object.values(errors)[0];
+                    setError(
+                        Array.isArray(firstError)
+                            ? firstError[0]
+                            : firstError ?? 'Unable to import attendance.',
+                    );
+                },
+                onFinish: () => setImporting(false),
             },
-            onFinish: () => setImporting(false),
-        });
-    };
-
-    const downloadTemplate = () => {
-        const { row: startRow, column: startColumn } = parseStartingCell(startingCell);
-        const worksheet = XLSX.utils.aoa_to_sheet([]);
-        const values = [
-            ['date', 'time_in', 'time_out', 'segment', 'status'],
-            ['2026-08-30', '08:00 AM', '05:00 PM', 1, 'present'],
-        ];
-        values.forEach((row, rowOffset) => row.forEach((value, columnOffset) => {
-            const address = XLSX.utils.encode_cell({ r: startRow + rowOffset, c: startColumn + columnOffset });
-            worksheet[address] = { t: typeof value === 'number' ? 'n' : 's', v: value };
-        }));
-        worksheet['!ref'] = XLSX.utils.encode_range({
-            s: { r: startRow, c: startColumn },
-            e: { r: startRow + values.length - 1, c: startColumn + values[0].length - 1 },
-        });
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
-        XLSX.writeFile(workbook, 'payroll_attendance_template.xlsx');
+        );
     };
 
     return (
@@ -202,35 +273,70 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
                 <DialogHeader>
                     <DialogTitle>Import Attendance</DialogTitle>
                     <DialogDescription>
-                        Import attendance records for this employee from CSV or Excel. The configured starting cell is treated as the header row.
+                        Import attendance records for this employee from CSV or
+                        Excel. The configured starting cell is treated as the
+                        header row.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-5">
                     <div className="rounded-lg border border-dashed p-6 text-center">
                         <FileSpreadsheet className="mx-auto h-8 w-8 text-muted-foreground" />
-                        <p className="mt-2 text-sm font-medium">{fileName || 'Choose an attendance CSV or Excel file'}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Starting cell: {startingCell}</p>
-                        {previewCount > 0 && <p className="mt-1 text-xs text-muted-foreground">{previewCount} records ready to import</p>}
+                        <p className="mt-2 text-sm font-medium">
+                            {fileName || 'Choose an attendance CSV or Excel file'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Starting cell: {startingCell}
+                        </p>
+                        {previewCount > 0 && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {previewCount} records ready to import
+                            </p>
+                        )}
                         <input
                             ref={inputRef}
                             type="file"
                             accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                             className="hidden"
-                            onChange={(event) => handleFile(event.target.files?.[0])}
+                            onChange={(event) =>
+                                handleFile(event.target.files?.[0])
+                            }
                         />
-                        <Button type="button" variant="outline" className="mt-4" onClick={() => inputRef.current?.click()}>
-                            <Upload className="mr-2 h-4 w-4" /> Choose file
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-4"
+                            onClick={() => inputRef.current?.click()}
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Choose file
                         </Button>
                     </div>
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+
+                    {error && (
+                        <p className="text-sm text-destructive">{error}</p>
+                    )}
                 </div>
 
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={downloadTemplate}>
-                        <Download className="mr-2 h-4 w-4" /> Template
+                    <Button
+                        type="button"
+                        variant="outline"
+                        render={
+                            <a
+                                href="/templates/payroll_attendance_template.xlsx"
+                                download="payroll_attendance_template.xlsx"
+                            />
+                        }
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Template
                     </Button>
-                    <Button type="button" onClick={handleImport} disabled={importing || !rows.length}>
+                    <Button
+                        type="button"
+                        onClick={handleImport}
+                        disabled={importing || !rows.length}
+                    >
                         {importing ? 'Importing…' : 'Import Attendance'}
                     </Button>
                 </DialogFooter>
