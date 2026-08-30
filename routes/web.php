@@ -20,6 +20,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])
         ->name('employees.attendance.index');
+    Route::post('/employees/{employee}/attendance/import', [EmployeeAttendanceController::class, 'import'])
+        ->name('employees.attendance.import');
     Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])
         ->name('employees.attendance.destroy');
 
