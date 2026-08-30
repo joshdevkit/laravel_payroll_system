@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollSettingsController;
+use App\Http\Controllers\SchedulingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthenticationController::class, 'showLoginForm'])->name('login');
@@ -15,6 +16,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/logout', [AuthenticationController::class, 'logout'])->name('logout');
     Route::resource('employees', EmployeeController::class);
+
+    Route::get('/scheduling', [SchedulingController::class, 'index'])->name('schedules.index');
+    Route::post('/scheduling', [SchedulingController::class, 'store'])->name('schedules.store');
+    Route::post('/scheduling/bulk', [SchedulingController::class, 'bulkStore'])->name('schedules.bulk-store');
+    Route::put('/scheduling/{schedule}', [SchedulingController::class, 'update'])->name('schedules.update');
+    Route::delete('/scheduling/{schedule}', [SchedulingController::class, 'destroy'])->name('schedules.destroy');
+
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
 });
