@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
+use Illuminate\Support\Facades\Route;
 class PayrollSettingsController extends Controller
 {
     public function index(): Response
@@ -48,7 +49,6 @@ class PayrollSettingsController extends Controller
         $validated['schedule_import_start_cell'] = strtoupper(trim($validated['schedule_import_start_cell']));
 
         PayrollSetting::query()->updateOrCreate(['id' => true], $validated);
-
         return back()->with('success', 'Payroll configurations saved successfully.');
     }
 

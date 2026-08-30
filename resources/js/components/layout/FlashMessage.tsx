@@ -40,13 +40,13 @@ export function FlashMessage() {
     }
 
     return (
-        <div className="pointer-events-none fixed inset-x-0 top-20 z-[100] flex justify-center px-4">
+        <div className="pointer-events-none fixed right-4 top-20 z-[100] w-auto max-w-[calc(100vw-2rem)]">
             <div
                 role={isError ? 'alert' : 'status'}
                 className={
                     isError
-                        ? 'pointer-events-auto flex w-full max-w-xl items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive shadow-sm'
-                        : 'pointer-events-auto flex w-full max-w-xl items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700 shadow-sm dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400'
+                        ? 'pointer-events-auto flex w-[min(28rem,calc(100vw-2rem))] items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive shadow-lg'
+                        : 'pointer-events-auto flex w-[min(28rem,calc(100vw-2rem))] items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700 shadow-lg dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-400'
                 }
             >
                 {isError ? (
@@ -63,7 +63,8 @@ export function FlashMessage() {
                     className="rounded-sm opacity-70 transition-opacity hover:opacity-100"
                     aria-label="Dismiss notification"
                 >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4"
+                    />
                 </button>
             </div>
         </div>

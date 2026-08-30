@@ -61,6 +61,7 @@ export function PayrollSettingsForm({ initialSettings }: { initialSettings: Payr
         setSaving(true);
 
         router.put('/settings', {
+            _method: 'PUT',
             ...settings,
             daily_work_hours: number(settings.daily_work_hours),
             overtime_multiplier: number(settings.overtime_multiplier),
