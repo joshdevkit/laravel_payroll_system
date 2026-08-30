@@ -18,16 +18,16 @@ class SchedulingController extends Controller
         $end = $request->date('end_date')?->endOfDay() ?? now()->endOfMonth();
 
         return inertia('Scheduling/Index', [
-            'employees' => fn () => Employee::query()
+            'employees' => fn() => Employee::query()
                 ->orderBy('full_name')
                 ->get(),
-            'schedules' => fn () => EmployeeSchedule::query()
+            'schedules' => fn() => EmployeeSchedule::query()
                 ->whereBetween('work_date', [$start->toDateString(), $end->toDateString()])
                 ->orderBy('work_date')
                 ->orderBy('segment_no')
                 ->orderBy('start_time')
                 ->get(),
-            'payrollSettings' => fn () => PayrollSetting::query()->find(1),
+            'payrollSettings' => fn() => PayrollSetting::query()->find(1),
         ]);
     }
 
@@ -65,25 +65,55 @@ class SchedulingController extends Controller
     {
         $validated = $request->validate([
             'schedules' => ['required', 'array', 'min:1'],
-            'schedules.*.employee_id' => ['required', 'uuid', 'exists:employees,id'],
+            'schedules.*.employee_id' => [
+                'required',
+                'string',
+                'exists:employees,employee_id',
+            ],
             'schedules.*.work_date' => ['required', 'date'],
-            'schedules.*.segment_no' => ['nullable', 'integer', 'min:1'],
-            'schedules.*.start_time' => ['required_if:schedules.*.is_working_day,true', 'date_format:H:i'],
-            'schedules.*.end_time' => ['required_if:schedules.*.is_working_day,true', 'date_format:H:i'],
-            'schedules.*.break_minutes' => ['nullable', 'integer', 'min:0'],
-            'schedules.*.is_working_day' => ['required', 'boolean'],
-            'schedules.*.notes' => ['nullable', 'string', 'max:1000'],
+            'schedules.*.segment_no' => [
+                'nullable',
+                'integer',
+                'min:1',
+            ],
+            'schedules.*.start_time' => [
+                'required_if:schedules.*.is_working_day,true',
+                'date_format:H:i',
+            ],
+            'schedules.*.end_time' => [
+                'required_if:schedules.*.is_working_day,true',
+                'date_format:H:i',
+            ],
+            'schedules.*.break_minutes' => [
+                'nullable',
+                'integer',
+                'min:0',
+            ],
+            'schedules.*.is_working_day' => [
+                'required',
+                'boolean',
+            ],
+            'schedules.*.notes' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
         ]);
 
         foreach ($validated['schedules'] as $input) {
-            $segmentNo = $input['segment_no'] ?? $this->nextSegmentNumber(
+            $employee = Employee::where(
+                'employee_id',
                 $input['employee_id'],
+            )->firstOrFail();
+
+            $segmentNo = $input['segment_no'] ?? $this->nextSegmentNumber(
+                $employee->id,
                 $input['work_date'],
             );
 
             EmployeeSchedule::updateOrCreate(
                 [
-                    'employee_id' => $input['employee_id'],
+                    'employee_id' => $employee->id,
                     'work_date' => $input['work_date'],
                     'segment_no' => $segmentNo,
                 ],
@@ -97,13 +127,16 @@ class SchedulingController extends Controller
             );
         }
 
-        return back()->with('success', 'Schedules saved successfully.');
+        return back()->with(
+            'success',
+            'Schedules saved successfully.',
+        );
     }
 
     private function validatedData(Request $request): array
     {
         $data = $request->validate([
-            'employee_id' => ['required', 'uuid', 'exists:employees,id'],
+            'employee_id' => ['required', 'uuid', 'exists:employees,employee_id'],
             'work_date' => ['required', 'date'],
             'start_time' => ['required_if:is_working_day,true', 'date_format:H:i'],
             'end_time' => ['required_if:is_working_day,true', 'date_format:H:i'],
@@ -111,6 +144,7 @@ class SchedulingController extends Controller
             'is_working_day' => ['required', 'boolean'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
 
         if ($data['is_working_day']) {
             $start = Carbon::createFromFormat('H:i', $data['start_time']);

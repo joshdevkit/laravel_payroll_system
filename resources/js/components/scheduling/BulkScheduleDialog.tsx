@@ -177,7 +177,7 @@ export function BulkScheduleDialog({
             }
 
             return {
-                employee_id: employee.id,
+                employee_id: employee.employee_id,
                 work_date: row.workDate,
                 start_time: row.startTime,
                 end_time: row.endTime,
@@ -202,7 +202,7 @@ export function BulkScheduleDialog({
             const schedules = buildFileRows();
 
             router.post(
-                '/schedules/bulk',
+                '/scheduling/bulk',
                 { schedules },
                 {
                     preserveScroll: true,
