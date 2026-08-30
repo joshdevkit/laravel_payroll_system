@@ -119,8 +119,8 @@ return new class extends Migration
             $table->unsignedInteger('late_grace_minutes')->default(0);
             $table->unsignedInteger('unpaid_break_minutes')->default(60);
             $table->boolean('night_diff_enabled')->default(true);
-            $table->time('night_diff_start')->default('22:00:00');
-            $table->time('night_diff_end')->default('06:00:00');
+            $table->time('night_diff_start')->default('22:00');
+            $table->time('night_diff_end')->default('06:00');
             $table->decimal('night_diff_multiplier', 8, 4)->default(0.10);
             $table->boolean('holiday_pay_enabled')->default(true);
             $table->decimal('holiday_regular_multiplier', 8, 4)->default(2.00);
@@ -144,8 +144,8 @@ return new class extends Migration
             'late_grace_minutes' => 0,
             'unpaid_break_minutes' => 60,
             'night_diff_enabled' => true,
-            'night_diff_start' => '22:00:00',
-            'night_diff_end' => '06:00:00',
+            'night_diff_start' => '22:00',
+            'night_diff_end' => '06:00',
             'night_diff_multiplier' => 0.10,
             'holiday_pay_enabled' => true,
             'holiday_regular_multiplier' => 2.00,

@@ -110,15 +110,23 @@ export function PayrollSettingsForm({
                 1,
                 number(settings.monthly_daily_rate_divisor),
             ),
-            attendance_import_start_cell: settings.attendance_import_start_cell
-                .trim()
-                .toUpperCase(),
-            schedule_import_start_cell: settings.schedule_import_start_cell
-                .trim()
-                .toUpperCase(),
+            attendance_import_start_cell:
+                settings.attendance_import_start_cell.trim().toUpperCase(),
+            schedule_import_start_cell:
+                settings.schedule_import_start_cell.trim().toUpperCase(),
+
+            work_schedule: settings.work_schedule
+                ? JSON.stringify(settings.work_schedule)
+                : null,
+
+            shift_options: settings.shift_options
+                ? JSON.stringify(settings.shift_options)
+                : null,
         };
 
-        router.put('/settings', payload as never, {
+        // console.log('Saving payroll settings:', payload);
+
+        router.put('/settings', payload, {
             preserveScroll: true,
             onFinish: () => setSaving(false),
         });

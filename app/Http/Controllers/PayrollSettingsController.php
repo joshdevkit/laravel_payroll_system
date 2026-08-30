@@ -19,7 +19,7 @@ class PayrollSettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'daily_work_hours' => ['required', 'numeric', 'gt:0'],
+            'daily_work_hours' => ['required', 'numeric'],
             'late_enabled' => ['required', 'boolean'],
             'undertime_enabled' => ['required', 'boolean'],
             'overtime_enabled' => ['required', 'boolean'],
@@ -28,22 +28,22 @@ class PayrollSettingsController extends Controller
             'late_grace_minutes' => ['required', 'integer', 'min:0'],
             'unpaid_break_minutes' => ['required', 'integer', 'min:0'],
             'night_diff_enabled' => ['required', 'boolean'],
-            'night_diff_start' => ['required', 'date_format:H:i'],
-            'night_diff_end' => ['required', 'date_format:H:i'],
+            'night_diff_start' => ['required'],
+            'night_diff_end' => ['required'],
             'night_diff_multiplier' => ['required', 'numeric', 'min:0'],
             'holiday_pay_enabled' => ['required', 'boolean'],
             'holiday_regular_multiplier' => ['required', 'numeric', 'min:0'],
             'holiday_special_multiplier' => ['required', 'numeric', 'min:0'],
             'leave_pay_enabled' => ['required', 'boolean'],
-            'monthly_daily_rate_divisor' => ['required', 'numeric', 'gt:0'],
+            'monthly_daily_rate_divisor' => ['required', 'numeric'],
             'work_schedule' => ['nullable', 'array'],
             'shift_options' => ['nullable', 'array'],
             'attendance_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
             'schedule_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
         ]);
 
-        $validated['night_diff_start'] .= ':00';
-        $validated['night_diff_end'] .= ':00';
+        $validated['night_diff_start'];
+        $validated['night_diff_end'];
         $validated['attendance_import_start_cell'] = strtoupper(trim($validated['attendance_import_start_cell']));
         $validated['schedule_import_start_cell'] = strtoupper(trim($validated['schedule_import_start_cell']));
 
