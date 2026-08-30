@@ -59,6 +59,7 @@ export function PayrollSettingsForm({ initialSettings }: { initialSettings: Payr
 
     const save = () => {
         setSaving(true);
+
         router.put('/settings', {
             ...settings,
             daily_work_hours: number(settings.daily_work_hours),
@@ -72,6 +73,8 @@ export function PayrollSettingsForm({ initialSettings }: { initialSettings: Payr
             monthly_daily_rate_divisor: Math.max(1, number(settings.monthly_daily_rate_divisor)),
             attendance_import_start_cell: settings.attendance_import_start_cell.trim().toUpperCase(),
             schedule_import_start_cell: settings.schedule_import_start_cell.trim().toUpperCase(),
+            work_schedule: settings.work_schedule ? JSON.stringify(settings.work_schedule) : null,
+            shift_options: settings.shift_options ? JSON.stringify(settings.shift_options) : null,
         }, { preserveScroll: true, onFinish: () => setSaving(false) });
     };
 
