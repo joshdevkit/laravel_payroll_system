@@ -7,7 +7,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
-use Illuminate\Support\Facades\Route;
 class PayrollSettingsController extends Controller
 {
     public function index(): Response
@@ -37,8 +36,8 @@ class PayrollSettingsController extends Controller
             'holiday_special_multiplier' => ['required', 'numeric', 'min:0'],
             'leave_pay_enabled' => ['required', 'boolean'],
             'monthly_daily_rate_divisor' => ['required', 'numeric', 'gt:0'],
-            'work_schedule' => ['required', 'array'],
-            'shift_options' => ['required', 'array'],
+            'work_schedule' => ['nullable', 'array'],
+            'shift_options' => ['nullable', 'array'],
             'attendance_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
             'schedule_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
         ]);
@@ -48,14 +47,16 @@ class PayrollSettingsController extends Controller
         $validated['attendance_import_start_cell'] = strtoupper(trim($validated['attendance_import_start_cell']));
         $validated['schedule_import_start_cell'] = strtoupper(trim($validated['schedule_import_start_cell']));
 
-        PayrollSetting::query()->updateOrCreate(['id' => true], $validated);
+        $settings = $this->settings();
+        $settings->update($validated);
+
         return back()->with('success', 'Payroll configurations saved successfully.');
     }
 
     private function settings(): PayrollSetting
     {
         return PayrollSetting::query()->firstOrCreate(
-            ['id' => true],
+            ['id' => 1],
             [
                 'daily_work_hours' => 8,
                 'late_enabled' => true,
@@ -92,7 +93,13 @@ class PayrollSettingsController extends Controller
 
     private function defaultWorkSchedule(): array
     {
-        $working = ['enabled' => true, 'start' => '08:00', 'end' => '17:00', 'shift_id' => 'regular', 'break_minutes' => 60];
+        $working = [
+            'enabled' => true,
+            'start' => '08:00',
+            'end' => '17:00',
+            'shift_id' => 'regular',
+            'break_minutes' => 60,
+        ];
 
         return [
             'monday' => $working,
