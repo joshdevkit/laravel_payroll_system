@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
-    downloadSpreadsheetTemplate,
     normalizeSpreadsheetDate,
     normalizeSpreadsheetTime,
     readSpreadsheetRows,
@@ -234,23 +233,6 @@ export function BulkScheduleDialog({
         }
     };
 
-    const downloadTemplate = () => {
-        downloadSpreadsheetTemplate({
-            fileName: 'payroll_schedule_template.xlsx',
-            sheetName: 'Schedules',
-            startingCell: scheduleImportStartCell,
-            headers: ['EMP ID', 'DATE', 'SEGMENT', 'START TIME', 'END TIME'],
-            sampleRows: [],
-            instructions: [
-                ['EMP ID', 'Employee ID from the Employees table.'],
-                ['DATE', 'Schedule date. Use YYYY-MM-DD or a valid spreadsheet date.'],
-                ['SEGMENT', 'Positive whole number. Use 1 for the first segment.'],
-                ['START TIME', 'Schedule start time, such as 08:00 AM or 08:00.'],
-                ['END TIME', 'Schedule end time, such as 05:00 PM or 17:00.'],
-            ],
-        });
-    };
-
     const reset = () => {
         setFileRows([]);
         setFileName(null);
@@ -297,7 +279,12 @@ export function BulkScheduleDialog({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={downloadTemplate}
+                                render={
+                                    <a
+                                        href="/templates/payroll_schedule_template.xlsx"
+                                        download="payroll_schedule_template.xlsx"
+                                    />
+                                }
                             >
                                 <Download className="mr-2 h-4 w-4" />
                                 Excel template
