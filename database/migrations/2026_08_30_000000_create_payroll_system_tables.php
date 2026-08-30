@@ -30,10 +30,6 @@ return new class extends Migration
             $table->string('tin')->nullable();
             $table->date('date_hired');
             $table->timestamps();
-
-            $table->check("employment_type in ('regular', 'probationary', 'contractual')");
-            $table->check("rate_type in ('daily', 'monthly')");
-            $table->check("(rate_type = 'daily' and coalesce(daily_rate, 0) > 0) or (rate_type = 'monthly' and coalesce(basic_rate, 0) > 0)");
         });
 
         Schema::create('employee_schedules', function (Blueprint $table) {
@@ -53,9 +49,6 @@ return new class extends Migration
             $table->unique(['employee_id', 'work_date', 'segment_no']);
             $table->index('work_date', 'employee_schedules_date_idx');
             $table->index(['employee_id', 'work_date'], 'employee_schedules_employee_date_idx');
-            $table->check('segment_no > 0');
-            $table->check('break_minutes >= 0');
-            $table->check('(not is_working_day) or start_time <> end_time');
         });
 
         Schema::create('attendance', function (Blueprint $table) {
@@ -78,10 +71,6 @@ return new class extends Migration
             );
             $table->index(['employee_id', 'work_date'], 'attendance_employee_date_idx');
             $table->index('work_date', 'attendance_date_idx');
-            $table->check('segment_no > 0');
-            $table->check("status in ('present', 'absent', 'on_leave', 'holiday')");
-            $table->check("source in ('manual', 'biometric', 'imported', 'system')");
-            $table->check('time_out is null or time_in is null or time_out > time_in');
         });
 
         Schema::create('leave_types', function (Blueprint $table) {
@@ -109,8 +98,6 @@ return new class extends Migration
                 ['employee_id', 'start_date', 'end_date'],
                 'leave_requests_employee_dates_idx'
             );
-            $table->check("status in ('pending', 'approved', 'rejected')");
-            $table->check('end_date >= start_date');
         });
 
         Schema::create('holidays', function (Blueprint $table) {
@@ -119,8 +106,6 @@ return new class extends Migration
             $table->string('name');
             $table->string('type');
             $table->timestamp('created_at')->useCurrent();
-
-            $table->check("type in ('regular', 'special_non_working')");
         });
 
         Schema::create('payroll_settings', function (Blueprint $table) {
@@ -176,8 +161,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('pay_date', 'payroll_runs_pay_date_idx');
-            $table->check("status in ('draft', 'processing', 'completed', 'cancelled')");
-            $table->check('cutoff_end >= cutoff_start');
         });
 
         Schema::create('payroll_items', function (Blueprint $table) {
