@@ -366,7 +366,7 @@ export function PayrollSettingsForm({
                                 onChange={(e) =>
                                     set(
                                         'schedule_import_start_cell',
-                                        e.target.value,
+                                        e.target.value
                                     )
                                 }
                                 placeholder="C3"
