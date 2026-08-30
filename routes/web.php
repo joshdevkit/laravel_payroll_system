@@ -12,6 +12,9 @@ Route::middleware('auth')->group(function () {
         return inertia('Dashboard/Index');
     })->name('dashboard');
 
+    Route::post('/logout', [AuthenticationController::class, 'logout'])
+        ->name('logout');
+
     Route::get('/employees', [EmployeeController::class, 'index'])
         ->name('employees.index');
     Route::post('/employees', [EmployeeController::class, 'store'])
