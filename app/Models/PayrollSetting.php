@@ -8,12 +8,6 @@ class PayrollSetting extends Model
 {
     protected $table = 'payroll_settings';
 
-    protected $primaryKey = 'id';
-
-    public $incrementing = false;
-
-    protected $keyType = 'boolean';
-
     protected $fillable = [
         'daily_work_hours',
         'late_enabled',
@@ -41,7 +35,6 @@ class PayrollSetting extends Model
     protected function casts(): array
     {
         return [
-            'id' => 'boolean',
             'daily_work_hours' => 'decimal:2',
             'late_enabled' => 'boolean',
             'undertime_enabled' => 'boolean',
