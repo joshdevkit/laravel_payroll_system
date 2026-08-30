@@ -58,8 +58,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->date('work_date');
             $table->unsignedInteger('segment_no')->default(1);
-            $table->timestampTz('time_in')->nullable();
-            $table->timestampTz('time_out')->nullable();
+            $table->dateTime('time_in')->nullable();
+            $table->dateTime('time_out')->nullable();
             $table->string('status')->default('present');
             $table->string('source')->default('manual');
             $table->text('notes')->nullable();
@@ -110,36 +110,27 @@ return new class extends Migration
 
         Schema::create('payroll_settings', function (Blueprint $table) {
             $table->id();
-
             $table->decimal('daily_work_hours', 6, 2)->default(8);
-
             $table->boolean('late_enabled')->default(true);
             $table->boolean('undertime_enabled')->default(true);
             $table->boolean('overtime_enabled')->default(true);
-
             $table->decimal('overtime_multiplier', 8, 4)->default(1.25);
             $table->unsignedInteger('overtime_threshold_minutes')->default(0);
             $table->unsignedInteger('late_grace_minutes')->default(0);
             $table->unsignedInteger('unpaid_break_minutes')->default(60);
-
             $table->boolean('night_diff_enabled')->default(true);
             $table->time('night_diff_start')->default('22:00:00');
             $table->time('night_diff_end')->default('06:00:00');
             $table->decimal('night_diff_multiplier', 8, 4)->default(0.10);
-
             $table->boolean('holiday_pay_enabled')->default(true);
             $table->decimal('holiday_regular_multiplier', 8, 4)->default(2.00);
             $table->decimal('holiday_special_multiplier', 8, 4)->default(1.30);
-
             $table->boolean('leave_pay_enabled')->default(true);
             $table->decimal('monthly_daily_rate_divisor', 8, 2)->default(26);
-
             $table->json('work_schedule')->nullable();
             $table->json('shift_options')->nullable();
-
             $table->string('attendance_import_start_cell')->default('C3');
             $table->string('schedule_import_start_cell')->default('C3');
-
             $table->timestamps();
         });
 
@@ -177,7 +168,6 @@ return new class extends Migration
             $table->string('status')->default('draft');
             $table->json('settings_snapshot')->nullable();
             $table->timestamps();
-
             $table->index('pay_date', 'payroll_runs_pay_date_idx');
         });
 
@@ -189,7 +179,6 @@ return new class extends Migration
             $table->foreignUuid('employee_id')
                 ->constrained('employees')
                 ->restrictOnDelete();
-
             $table->decimal('scheduled_workdays', 14, 2)->default(0);
             $table->decimal('present_days', 14, 2)->default(0);
             $table->decimal('absent_days', 14, 2)->default(0);
@@ -201,7 +190,6 @@ return new class extends Migration
             $table->unsignedInteger('undertime_minutes')->default(0);
             $table->unsignedInteger('overtime_minutes')->default(0);
             $table->unsignedInteger('night_diff_minutes')->default(0);
-
             $table->decimal('basic_pay', 14, 2)->default(0);
             $table->decimal('overtime_pay', 14, 2)->default(0);
             $table->decimal('holiday_pay', 14, 2)->default(0);
@@ -214,17 +202,14 @@ return new class extends Migration
             $table->decimal('tax_deduction', 14, 2)->default(0);
             $table->decimal('leave_deduction', 14, 2)->default(0);
             $table->decimal('other_deductions', 14, 2)->default(0);
-
             $table->decimal('total_earnings', 14, 2)
                 ->storedAs('(basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus)');
             $table->decimal('total_deductions', 14, 2)
                 ->storedAs('(sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions)');
             $table->decimal('net_pay', 14, 2)
                 ->storedAs('((basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus) - (sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions))');
-
             $table->json('calculation_snapshot')->nullable();
             $table->timestamps();
-
             $table->unique(['payroll_run_id', 'employee_id']);
             $table->index('payroll_run_id', 'payroll_items_run_idx');
         });
@@ -236,10 +221,10 @@ return new class extends Migration
                 ->cascadeOnDelete();
             $table->date('work_date');
             $table->unsignedInteger('segment_no');
-            $table->timestampTz('scheduled_start');
-            $table->timestampTz('scheduled_end');
-            $table->timestampTz('actual_in')->nullable();
-            $table->timestampTz('actual_out')->nullable();
+            $table->dateTime('scheduled_start');
+            $table->dateTime('scheduled_end');
+            $table->dateTime('actual_in')->nullable();
+            $table->dateTime('actual_out')->nullable();
             $table->integer('scheduled_minutes')->default(0);
             $table->integer('break_minutes')->default(0);
             $table->integer('worked_minutes')->default(0);
@@ -252,7 +237,6 @@ return new class extends Migration
             $table->decimal('night_diff_pay', 12, 2)->default(0);
             $table->text('calculation_notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
-
             $table->unique(
                 ['payroll_item_id', 'work_date', 'segment_no'],
                 'payroll_schedule_details_item_date_segment_key'
@@ -262,9 +246,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('payroll_schedule_details');
