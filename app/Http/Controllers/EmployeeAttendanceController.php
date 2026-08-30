@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Response;
 
 class EmployeeAttendanceController extends Controller
@@ -39,7 +38,7 @@ class EmployeeAttendanceController extends Controller
                         $scheduledEnd->addDay();
                     }
 
-                    $undertimeMinutes = max(0, $actualOut->diffInMinutes($scheduledEnd, false));
+                    $undertimeMinutes = max(0, $actualOut->diffInMinutes($scheduledEnd, false) * -1);
                 }
 
                 return [
@@ -52,10 +51,9 @@ class EmployeeAttendanceController extends Controller
                     'segment_no' => $record->segment_no,
                     'late_minutes' => $lateMinutes,
                     'undertime_minutes' => $undertimeMinutes,
-                    'created_at' => $record->created_at?->toIso8601String(),
-                    'updated_at' => $record->updated_at?->toIso8601String(),
                 ];
-            });
+            })
+            ->values();
 
         return inertia('Employees/Attendance', [
             'employee' => [
