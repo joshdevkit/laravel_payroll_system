@@ -121,10 +121,10 @@ return new class extends Migration
             $table->boolean('night_diff_enabled')->default(true);
             $table->time('night_diff_start')->default('22:00');
             $table->time('night_diff_end')->default('06:00');
-            $table->decimal('night_diff_multiplier', 10, 2)->default(0.1);
+            $table->decimal('night_diff_multiplier', 10, 1)->default(0.1);
             $table->boolean('holiday_pay_enabled')->default(true);
-            $table->integer('holiday_regular_multiplier')->default(2.0);
-            $table->integer('holiday_special_multiplier')->default(1.3);
+            $table->integer('holiday_regular_multiplier')->default(2);
+            $table->decimal('holiday_special_multiplier', 11, 1)->default(1.3);
             $table->boolean('leave_pay_enabled')->default(true);
             $table->integer('monthly_daily_rate_divisor')->default(26);
             $table->json('work_schedule')->nullable();

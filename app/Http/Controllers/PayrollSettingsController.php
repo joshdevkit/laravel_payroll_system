@@ -23,17 +23,17 @@ class PayrollSettingsController extends Controller
             'late_enabled' => ['required', 'boolean'],
             'undertime_enabled' => ['required', 'boolean'],
             'overtime_enabled' => ['required', 'boolean'],
-            'overtime_multiplier' => ['required', 'integer', 'min:0', 'min:0'],
+            'overtime_multiplier' => ['required', 'decimal:2', 'min:0', 'min:0'],
             'overtime_threshold_minutes' => ['required', 'integer', 'min:0'],
             'late_grace_minutes' => ['required', 'integer', 'min:0'],
             'unpaid_break_minutes' => ['required', 'integer', 'min:0'],
             'night_diff_enabled' => ['required', 'boolean'],
             'night_diff_start' => ['required'],
             'night_diff_end' => ['required'],
-            'night_diff_multiplier' => ['required', 'integer', 'min:0', 'min:0'],
+            'night_diff_multiplier' => ['required', 'decimal:1', 'min:0', 'min:0'],
             'holiday_pay_enabled' => ['required', 'boolean'],
             'holiday_regular_multiplier' => ['required', 'integer', 'min:0', 'min:0'],
-            'holiday_special_multiplier' => ['required', 'integer', 'min:0', 'min:0'],
+            'holiday_special_multiplier' => ['required', 'decimal:1', 'min:0', 'min:0'],
             'leave_pay_enabled' => ['required', 'boolean'],
             'monthly_daily_rate_divisor' => ['required', 'integer', 'min:0'],
             'work_schedule' => ['nullable', 'array'],
@@ -41,7 +41,6 @@ class PayrollSettingsController extends Controller
             'attendance_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
             'schedule_import_start_cell' => ['required', 'string', 'regex:/^[A-Z]+[1-9][0-9]*$/i'],
         ]);
-        dd($validated);
         $validated['night_diff_start'];
         $validated['night_diff_end'];
         $validated['attendance_import_start_cell'] = strtoupper(trim($validated['attendance_import_start_cell']));

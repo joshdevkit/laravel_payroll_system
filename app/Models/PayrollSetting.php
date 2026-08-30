@@ -31,27 +31,4 @@ class PayrollSetting extends Model
         'attendance_import_start_cell',
         'schedule_import_start_cell',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'daily_work_hours' => 'integer',
-            'late_enabled' => 'boolean',
-            'undertime_enabled' => 'boolean',
-            'overtime_enabled' => 'boolean',
-            'overtime_multiplier' => 'decimal:2',
-            'overtime_threshold_minutes' => 'integer',
-            'late_grace_minutes' => 'integer',
-            'unpaid_break_minutes' => 'integer',
-            'night_diff_enabled' => 'boolean',
-            'night_diff_multiplier' => 'decimal:2',
-            'holiday_pay_enabled' => 'boolean',
-            'holiday_regular_multiplier' => 'integer',
-            'holiday_special_multiplier' => 'integer',
-            'leave_pay_enabled' => 'boolean',
-            'monthly_daily_rate_divisor' => 'integer',
-            'work_schedule' => 'array',
-            'shift_options' => 'array',
-        ];
-    }
 }
