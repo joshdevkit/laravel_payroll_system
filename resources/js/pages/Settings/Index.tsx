@@ -1,3 +1,4 @@
+import { FlashMessage } from '@/components/layout/FlashMessage';
 import { Navbar } from '@/components/layout/Navbar';
 import { PayrollSettingsForm, type PayrollSettings } from '@/components/settings/PayrollSettingsForm';
 
@@ -7,6 +8,8 @@ type SettingsPageProps = {
 
 export default function Index({ settings }: SettingsPageProps) {
     return (
+        <>
+        <FlashMessage />
         <div className="min-h-svh bg-background font-sans">
             <Navbar />
             <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
@@ -18,5 +21,6 @@ export default function Index({ settings }: SettingsPageProps) {
                 <PayrollSettingsForm initialSettings={settings} />
             </main>
         </div>
+        </>
     );
 }

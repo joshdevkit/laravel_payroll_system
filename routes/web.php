@@ -15,6 +15,5 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/logout', [AuthenticationController::class, 'logout'])->name('logout');
     Route::resource('employees', EmployeeController::class);
-    Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
-    Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
+   Route::resource('/settings', PayrollSettingsController::class);
 });
