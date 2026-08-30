@@ -13,6 +13,10 @@ class Employee extends Model
 
     protected $table = 'employees';
 
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $fillable = [
         'employee_id',
         'full_name',
