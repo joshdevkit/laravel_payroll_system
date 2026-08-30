@@ -36,18 +36,12 @@ const parseStartingCell = (cell: string) => {
     if (!match) throw new Error(`Invalid starting cell "${cell}". Use an Excel cell such as C3.`);
 
     let column = 0;
-    for (const character of match[1].toUpperCase()) {
-        column = column * 26 + character.charCodeAt(0) - 64;
-    }
-
+    for (const character of match[1].toUpperCase()) column = column * 26 + character.charCodeAt(0) - 64;
     return { row: Number(match[2]) - 1, column: column - 1 };
 };
 
 const normalizeDate = (value: unknown): string => {
-    if (value === null || value === undefined || String(value).trim() === '') {
-        throw new Error('Date value is required.');
-    }
-
+    if (value === null || value === undefined || String(value).trim() === '') throw new Error('Date value is required.');
     const raw = String(value).trim();
     const numeric = typeof value === 'number' ? value : Number(raw);
 
@@ -70,9 +64,9 @@ const normalizeDate = (value: unknown): string => {
 
 const normalizeTime = (value: unknown): string | null => {
     if (value === null || value === undefined || String(value).trim() === '') return null;
-
     const raw = String(value).trim();
     const numeric = typeof value === 'number' ? value : Number(raw);
+
     if (Number.isFinite(numeric) && numeric >= 0 && numeric < 1) {
         const minutes = Math.round(numeric * 1440) % 1440;
         return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00`;
@@ -128,24 +122,17 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             if (!sheet) throw new Error('The workbook does not contain a worksheet.');
 
-            const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-                header: 1,
-                raw: false,
-                defval: '',
-            });
+            const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: '' });
             const { row: startRow, column: startColumn } = parseStartingCell(startingCell);
             const selected = grid
                 .slice(startRow)
                 .map((row) => row.slice(startColumn).map((value) => String(value ?? '').trim()))
                 .filter((row) => row.some(Boolean));
 
-            if (selected.length < 2) {
-                throw new Error(`No importable data was found starting at ${startingCell}. The starting row must contain the headers.`);
-            }
+            if (selected.length < 2) throw new Error(`No importable data was found starting at ${startingCell}. The starting row must contain the headers.`);
 
             const headers = selected[0].map((header) => header.toLowerCase().replace(/\s+/g, '_'));
-            const required = ['date', 'time_in', 'time_out'];
-            const missing = required.filter((header) => !headers.includes(header));
+            const missing = ['date', 'time_in', 'time_out'].filter((header) => !headers.includes(header));
             if (missing.length) throw new Error(`Missing required columns: ${missing.join(', ')}`);
 
             const indexOf = (header: string) => headers.indexOf(header);
@@ -159,7 +146,6 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
 
                 if (!Number.isInteger(segment) || segment < 1) throw new Error(`Invalid segment on row ${index + startRow + 3}.`);
                 if (!validStatuses.includes(status)) throw new Error(`Invalid status on row ${index + startRow + 3}.`);
-
                 return { date, time_in: timeIn, time_out: timeOut, segment_no: segment, status };
             });
 
@@ -181,7 +167,10 @@ export function ImportAttendanceDialog({ open, onOpenChange, employeeId, startin
         router.post(`/employees/${employeeId}/attendance/import`, { rows }, {
             preserveScroll: true,
             onSuccess: () => handleOpenChange(false),
-            onError: (errors) => setError(Object.values(errors)[0] ?? 'Unable to import attendance.'),
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                setError(Array.isArray(firstError) ? firstError[0] : firstError ?? 'Unable to import attendance.');
+            },
             onFinish: () => setImporting(false),
         });
     };
