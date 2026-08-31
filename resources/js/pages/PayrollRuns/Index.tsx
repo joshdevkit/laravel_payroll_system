@@ -1,4 +1,5 @@
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { CalendarDays, Eye, Plus, Trash2, Wallet } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
@@ -109,6 +110,6 @@ export default function PayrollRuns({ payrollRuns }: Props) {
     );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
     return <label className="grid gap-2 text-sm font-medium">{label}{children}</label>;
 }
