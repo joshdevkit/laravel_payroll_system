@@ -12,19 +12,13 @@ Route::get('/', [AuthenticationController::class, 'showLoginForm'])->name('login
 Route::post('/login', [AuthenticationController::class, 'login'])->name('login.submit');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return inertia('Dashboard/Index');
-    })->name('dashboard');
-
+    Route::get('/dashboard', function () { return inertia('Dashboard/Index'); })->name('dashboard');
     Route::post('/logout', [AuthenticationController::class, 'logout'])->name('logout');
     Route::resource('employees', EmployeeController::class);
 
-    Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])
-        ->name('employees.attendance.index');
-    Route::post('/employees/{employee}/attendance/import', [EmployeeAttendanceController::class, 'import'])
-        ->name('employees.attendance.import');
-    Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])
-        ->name('employees.attendance.destroy');
+    Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->name('employees.attendance.index');
+    Route::post('/employees/{employee}/attendance/import', [EmployeeAttendanceController::class, 'import'])->name('employees.attendance.import');
+    Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])->name('employees.attendance.destroy');
 
     Route::get('/scheduling', [SchedulingController::class, 'index'])->name('schedules.index');
     Route::post('/scheduling', [SchedulingController::class, 'store'])->name('schedules.store');
@@ -35,6 +29,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payroll', [PayrollRunController::class, 'index'])->name('payroll.index');
     Route::post('/payroll', [PayrollRunController::class, 'store'])->name('payroll.store');
     Route::get('/payroll/{payrollRun}', [PayrollRunController::class, 'show'])->name('payroll.show');
+    Route::patch('/payroll/{payrollRun}/confirm', [PayrollRunController::class, 'confirm'])->name('payroll.confirm');
     Route::delete('/payroll/{payrollRun}', [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
 
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
