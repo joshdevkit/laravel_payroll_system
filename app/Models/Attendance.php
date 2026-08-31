@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+use App\Models\Employee;
 class Attendance extends Model
 {
     protected $table = 'attendance';
@@ -30,6 +31,7 @@ class Attendance extends Model
         'time_in' => 'datetime',
         'time_out' => 'datetime',
         'segment_no' => 'integer',
+        
     ];
 
     protected static function booted(): void

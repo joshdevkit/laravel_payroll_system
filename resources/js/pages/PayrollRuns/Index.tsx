@@ -42,8 +42,8 @@ export default function PayrollRuns({ payrollRuns }: { payrollRuns: (PayrollRun 
         <FlashMessage /><Navbar />
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
             <header className="flex flex-wrap items-center justify-between gap-4">
-                <div><p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">Payroll</p><h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">Payroll Runs</h1><p className="mt-1 text-sm text-muted-foreground">Create, calculate, review, and confirm payroll for each cutoff period.</p></div>
-                <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />New payroll run</Button>
+                <div><p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">Payroll</p><h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">Payroll Register</h1><p className="mt-1 text-sm text-muted-foreground">Create, calculate, review, and confirm payroll for each cutoff period.</p></div>
+                <Button onClick={() => setCreateOpen(true)}><Plus className="mr-2 h-4 w-4" />New payroll register</Button>
             </header>
             <PayrollRunStats total={payrollRuns.length} drafts={drafts} completed={completed} />
             <PayrollRunHistory runs={payrollRuns} onReview={(run) => router.get(`/payroll/${run.id}`)} onDelete={(run) => { setDeleteTarget(run); setDeleteOpen(true); }} />

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,8 +13,12 @@ class EmployeeController extends Controller
     public function index(): Response
     {
         return inertia('Employees/Index', [
-            'employees' => Employee::query()
+            'employees' => Employee::query()->with('category')
                 ->orderBy('full_name')
+                ->get(),
+            'categories' => Category::query()
+                ->select(['id', 'name'])
+                ->orderBy('name')
                 ->get(),
         ]);
     }
@@ -45,6 +50,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'employee_id' => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'exists:categories,id'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'employment_type' => ['required', 'in:regular,probationary,contractual'],
             'rate_type' => ['required', 'in:daily,monthly'],

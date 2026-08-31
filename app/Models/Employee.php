@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+use App\Models\EmployeeSchedule;
+use App\Models\Attendance;
+use App\Models\PayrollItem;
+use App\Models\Category;
 class Employee extends Model
 {
     use HasFactory;
@@ -19,6 +23,7 @@ class Employee extends Model
 
     protected $fillable = [
         'employee_id',
+        'category_id',
         'full_name',
         'employment_type',
         'rate_type',
@@ -59,5 +64,10 @@ class Employee extends Model
     public function payrollItems(): HasMany
     {
         return $this->hasMany(PayrollItem::class);
+    }
+
+       public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 }

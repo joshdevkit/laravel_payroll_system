@@ -16,7 +16,7 @@ const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Employees', href: '/employees', icon: Users },
     { label: 'Scheduling', href: '/scheduling', icon: CalendarRange },
-    { label: 'Payroll Runs', href: '/payroll', icon: Wallet },
+    { label: 'Payroll Register', href: '/payroll', icon: Wallet },
     { label: 'Holidays', href: '/holidays', icon: CalendarClock },
     { label: 'Settings', href: '/settings', icon: Settings2 },
 ];

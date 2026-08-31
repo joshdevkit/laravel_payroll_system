@@ -1,6 +1,7 @@
 import { FormEvent, useEffect } from 'react'
 import { useForm } from '@inertiajs/react'
-import { X } from 'lucide-react'
+import { Building2, CalendarDays, IdCard, UserRound, X } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input'
 export interface Employee {
     id: string
     employee_id: string
+    category_id: number
     full_name: string
     employment_type: 'regular' | 'probationary' | 'contractual'
     rate_type: 'daily' | 'monthly'
@@ -21,8 +23,14 @@ export interface Employee {
     created_at: string
 }
 
+export interface Category {
+    id: number
+    name: string
+}
+
 export type EmployeeFormData = {
     employee_id: string
+    category_id: number
     full_name: string
     employment_type: Employee['employment_type']
     rate_type: Employee['rate_type']
@@ -39,10 +47,12 @@ interface EmployeeFormDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     employee: Employee | null
+    category: Category[] | null
 }
 
 const emptyDefaults: EmployeeFormData = {
     employee_id: '',
+    category_id: 0,
     full_name: '',
     employment_type: 'regular',
     rate_type: 'daily',
@@ -59,6 +69,7 @@ export function EmployeeFormDialog({
     open,
     onOpenChange,
     employee,
+    category,
 }: EmployeeFormDialogProps) {
     const isEditMode = employee !== null
 
@@ -68,15 +79,17 @@ export function EmployeeFormDialog({
         if (!open) return
 
         if (!employee) {
-            form.reset()
+            form.setData(emptyDefaults)
+            form.clearErrors()
             return
         }
 
         form.setData({
             employee_id: employee.employee_id ?? '',
-            full_name: employee.full_name,
-            employment_type: employee.employment_type,
-            rate_type: employee.rate_type,
+            category_id: employee.category_id ?? 0,
+            full_name: employee.full_name ?? '',
+            employment_type: employee.employment_type ?? 'regular',
+            rate_type: employee.rate_type ?? 'daily',
             basic_rate:
                 employee.rate_type === 'monthly'
                     ? employee.basic_rate ?? null
@@ -89,39 +102,49 @@ export function EmployeeFormDialog({
             philhealth_no: employee.philhealth_no ?? '',
             pagibig_no: employee.pagibig_no ?? '',
             tin: employee.tin ?? '',
-            date_hired: employee.date_hired,
+            date_hired: employee.date_hired ?? '',
         })
+
         form.clearErrors()
     }, [open, employee])
 
     const submit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        const payload: EmployeeFormData = {
-            ...form.data,
+        form.transform((data) => ({
+            ...data,
+
+            category_id: Number(data.category_id),
+
             basic_rate:
-                form.data.rate_type === 'monthly'
-                    ? form.data.basic_rate || null
+                data.rate_type === 'monthly'
+                    ? data.basic_rate || null
                     : null,
+
             daily_rate:
-                form.data.rate_type === 'daily'
-                    ? form.data.daily_rate || null
+                data.rate_type === 'daily'
+                    ? data.daily_rate || null
                     : null,
-        }
+        }))
 
         if (isEditMode) {
             form.put(`/employees/${employee.id}`, {
-                data: payload,
                 preserveScroll: true,
-                onSuccess: () => onOpenChange(false),
+                onSuccess: () => {
+                    onOpenChange(false)
+                    form.reset()
+                },
             })
+
             return
         }
 
         form.post('/employees', {
-            data: payload,
             preserveScroll: true,
-            onSuccess: () => onOpenChange(false),
+            onSuccess: () => {
+                onOpenChange(false)
+                form.reset()
+            },
         })
     }
 
@@ -130,264 +153,509 @@ export function EmployeeFormDialog({
     const errors = form.errors as Record<string, string | undefined>
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
-            <div className="relative grid max-h-[90vh] w-full max-w-lg gap-6 overflow-y-auto rounded-[min(var(--radius-4xl),24px)] bg-popover p-6 text-sm text-popover-foreground shadow-xl ring-1 ring-foreground/5">
-                <button
-                    type="button"
-                    onClick={() => onOpenChange(false)}
-                    className="absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md bg-secondary text-foreground hover:bg-secondary/80"
-                    aria-label="Close"
-                >
-                    <X className="size-4" />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+            <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
 
-                <div className="flex flex-col gap-1.5">
-                    <h2 className="font-display text-base leading-none font-medium">
-                        {isEditMode ? 'Edit employee' : 'Add employee'}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        {isEditMode
-                            ? "Update this employee's details."
-                            : 'Fill in the details for the new employee.'}
-                    </p>
+                {/* Header */}
+                <div className="flex items-center justify-between border-b bg-muted/30 px-6 py-5">
+                    <div className="flex items-center gap-4">
+                        <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <UserRound className="size-5" />
+                        </div>
+
+                        <div>
+                            <h2 className="text-lg font-semibold tracking-tight">
+                                {isEditMode
+                                    ? 'Edit employee'
+                                    : 'Add employee'}
+                            </h2>
+
+                            <p className="mt-0.5 text-sm text-muted-foreground">
+                                {isEditMode
+                                    ? 'Update employee information and payroll details.'
+                                    : 'Create a new employee record for payroll.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => onOpenChange(false)}
+                        className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label="Close"
+                    >
+                        <X className="size-5" />
+                    </button>
                 </div>
 
-                <form id="employee-form" onSubmit={submit}>
-                    <FieldGroup>
-                        <Field data-invalid={!!errors.employee_id}>
-                            <FieldLabel htmlFor="employee-employee_id">
-                                Employee ID
-                            </FieldLabel>
-                            <Input
-                                id="employee-employee_id"
-                                placeholder="e.g. EMP-001"
-                                value={form.data.employee_id}
-                                onChange={(event) =>
-                                    form.setData('employee_id', event.target.value)
-                                }
-                                aria-invalid={!!errors.employee_id}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Company-provided employee ID.
-                            </p>
-                            {errors.employee_id && (
-                                <p className="text-sm text-destructive">
-                                    {errors.employee_id}
-                                </p>
-                            )}
-                        </Field>
+                {/* Form */}
+                <form
+                    id="employee-form"
+                    onSubmit={submit}
+                    className="flex-1 overflow-y-auto"
+                >
+                    <div className="space-y-8 p-6">
 
-                        <Field data-invalid={!!errors.full_name}>
-                            <FieldLabel htmlFor="employee-full_name">
-                                Full name
-                            </FieldLabel>
-                            <Input
-                                id="employee-full_name"
-                                placeholder="Juan Dela Cruz"
-                                value={form.data.full_name}
-                                onChange={(event) =>
-                                    form.setData('full_name', event.target.value)
-                                }
-                                aria-invalid={!!errors.full_name}
-                            />
-                            {errors.full_name && (
-                                <p className="text-sm text-destructive">
-                                    {errors.full_name}
-                                </p>
-                            )}
-                        </Field>
+                        {/* BASIC INFORMATION */}
+                        <section>
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <IdCard className="size-4" />
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field>
-                                <FieldLabel htmlFor="employee-employment_type">
-                                    Employment type
-                                </FieldLabel>
-                                <select
-                                    id="employee-employment_type"
-                                    value={form.data.employment_type}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'employment_type',
-                                            event.target.value as Employee['employment_type'],
-                                        )
-                                    }
-                                    className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                                >
-                                    <option value="regular">Regular</option>
-                                    <option value="probationary">Probationary</option>
-                                    <option value="contractual">Contractual</option>
-                                </select>
-                            </Field>
+                                <div>
+                                    <h3 className="text-sm font-semibold">
+                                        Basic Information
+                                    </h3>
 
-                            <Field>
-                                <FieldLabel htmlFor="employee-rate_type">
-                                    Rate type
-                                </FieldLabel>
-                                <select
-                                    id="employee-rate_type"
-                                    value={form.data.rate_type}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'rate_type',
-                                            event.target.value as Employee['rate_type'],
-                                        )
-                                    }
-                                    className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                                >
-                                    <option value="daily">Daily</option>
-                                    <option value="monthly">Monthly</option>
-                                </select>
-                            </Field>
-                        </div>
-
-                        {form.data.rate_type === 'daily' ? (
-                            <Field data-invalid={!!errors.daily_rate}>
-                                <FieldLabel htmlFor="employee-daily_rate">
-                                    Fixed daily rate (₱)
-                                </FieldLabel>
-                                <Input
-                                    id="employee-daily_rate"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="font-mono"
-                                    placeholder="500.00"
-                                    value={form.data.daily_rate ?? ''}
-                                    onChange={(event) =>
-                                        form.setData('daily_rate', event.target.value)
-                                    }
-                                    aria-invalid={!!errors.daily_rate}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Payroll uses this rate for each payable attendance day.
-                                </p>
-                                {errors.daily_rate && (
-                                    <p className="text-sm text-destructive">
-                                        {errors.daily_rate}
+                                    <p className="text-xs text-muted-foreground">
+                                        Employee identification and department.
                                     </p>
-                                )}
-                            </Field>
-                        ) : (
-                            <Field data-invalid={!!errors.basic_rate}>
-                                <FieldLabel htmlFor="employee-basic_rate">
-                                    Monthly basic rate (₱)
-                                </FieldLabel>
-                                <Input
-                                    id="employee-basic_rate"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="font-mono"
-                                    placeholder="15000.00"
-                                    value={form.data.basic_rate ?? ''}
-                                    onChange={(event) =>
-                                        form.setData('basic_rate', event.target.value)
-                                    }
-                                    aria-invalid={!!errors.basic_rate}
-                                />
-                                {errors.basic_rate && (
-                                    <p className="text-sm text-destructive">
-                                        {errors.basic_rate}
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border bg-card p-5">
+                                <FieldGroup>
+                                    <div className="grid gap-5 sm:grid-cols-2">
+
+                                        {/* Employee ID */}
+                                        <Field data-invalid={!!errors.employee_id}>
+                                            <FieldLabel htmlFor="employee-employee_id">
+                                                Employee ID
+                                            </FieldLabel>
+
+                                            <Input
+                                                id="employee-employee_id"
+                                                placeholder="e.g. EMP-001"
+                                                value={form.data.employee_id}
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'employee_id',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                aria-invalid={!!errors.employee_id}
+                                            />
+
+                                            {errors.employee_id && (
+                                                <p className="text-xs text-destructive">
+                                                    {errors.employee_id}
+                                                </p>
+                                            )}
+                                        </Field>
+
+                                        {/* Department */}
+                                        <Field data-invalid={!!errors.category_id}>
+                                            <FieldLabel htmlFor="employee-category_id">
+                                                Department
+                                            </FieldLabel>
+
+                                            <select
+                                                id="employee-category_id"
+                                                value={form.data.category_id}
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'category_id',
+                                                        Number(event.target.value),
+                                                    )
+                                                }
+                                                aria-invalid={!!errors.category_id}
+                                                className="border-input bg-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                            >
+                                                <option value={0} disabled>
+                                                    Select department
+                                                </option>
+
+                                                {category?.map((item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            {errors.category_id && (
+                                                <p className="text-xs text-destructive">
+                                                    {errors.category_id}
+                                                </p>
+                                            )}
+                                        </Field>
+                                    </div>
+
+                                    {/* Full name */}
+                                    <Field data-invalid={!!errors.full_name}>
+                                        <FieldLabel htmlFor="employee-full_name">
+                                            Full name
+                                        </FieldLabel>
+
+                                        <Input
+                                            id="employee-full_name"
+                                            placeholder="Juan Dela Cruz"
+                                            value={form.data.full_name}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'full_name',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            aria-invalid={!!errors.full_name}
+                                        />
+
+                                        {errors.full_name && (
+                                            <p className="text-xs text-destructive">
+                                                {errors.full_name}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </FieldGroup>
+                            </div>
+                        </section>
+
+                        {/* EMPLOYMENT */}
+                        <section>
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Building2 className="size-4" />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-semibold">
+                                        Employment & Compensation
+                                    </h3>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        Employment status and payroll rate.
                                     </p>
-                                )}
-                            </Field>
-                        )}
+                                </div>
+                            </div>
 
-                        <Field data-invalid={!!errors.date_hired}>
-                            <FieldLabel htmlFor="employee-date_hired">
-                                Date hired
-                            </FieldLabel>
-                            <Input
-                                id="employee-date_hired"
-                                type="date"
-                                value={form.data.date_hired}
-                                onChange={(event) =>
-                                    form.setData('date_hired', event.target.value)
-                                }
-                                aria-invalid={!!errors.date_hired}
-                            />
-                            {errors.date_hired && (
-                                <p className="text-sm text-destructive">
-                                    {errors.date_hired}
-                                </p>
-                            )}
-                        </Field>
+                            <div className="rounded-xl border bg-card p-5">
+                                <div className="grid gap-5 sm:grid-cols-2">
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field>
-                                <FieldLabel htmlFor="employee-sss_no">SSS No.</FieldLabel>
-                                <Input
-                                    id="employee-sss_no"
-                                    placeholder="Optional"
-                                    value={form.data.sss_no}
-                                    onChange={(event) =>
-                                        form.setData('sss_no', event.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Field>
-                                <FieldLabel htmlFor="employee-philhealth_no">
-                                    PhilHealth No.
-                                </FieldLabel>
-                                <Input
-                                    id="employee-philhealth_no"
-                                    placeholder="Optional"
-                                    value={form.data.philhealth_no}
-                                    onChange={(event) =>
-                                        form.setData('philhealth_no', event.target.value)
-                                    }
-                                />
-                            </Field>
-                        </div>
+                                    {/* Employment Type */}
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-employment_type">
+                                            Employment type
+                                        </FieldLabel>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field>
-                                <FieldLabel htmlFor="employee-pagibig_no">
-                                    Pag-IBIG No.
-                                </FieldLabel>
-                                <Input
-                                    id="employee-pagibig_no"
-                                    placeholder="Optional"
-                                    value={form.data.pagibig_no}
-                                    onChange={(event) =>
-                                        form.setData('pagibig_no', event.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Field>
-                                <FieldLabel htmlFor="employee-tin">TIN</FieldLabel>
-                                <Input
-                                    id="employee-tin"
-                                    placeholder="Optional"
-                                    value={form.data.tin}
-                                    onChange={(event) =>
-                                        form.setData('tin', event.target.value)
-                                    }
-                                />
-                            </Field>
-                        </div>
-                    </FieldGroup>
+                                        <select
+                                            id="employee-employment_type"
+                                            value={form.data.employment_type}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'employment_type',
+                                                    event.target.value as Employee['employment_type'],
+                                                )
+                                            }
+                                            className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            <option value="regular">
+                                                Regular
+                                            </option>
+
+                                            <option value="probationary">
+                                                Probationary
+                                            </option>
+
+                                            <option value="contractual">
+                                                Contractual
+                                            </option>
+                                        </select>
+                                    </Field>
+
+                                    {/* Rate Type */}
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-rate_type">
+                                            Rate type
+                                        </FieldLabel>
+
+                                        <select
+                                            id="employee-rate_type"
+                                            value={form.data.rate_type}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'rate_type',
+                                                    event.target.value as Employee['rate_type'],
+                                                )
+                                            }
+                                            className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            <option value="daily">
+                                                Daily
+                                            </option>
+
+                                            <option value="monthly">
+                                                Monthly
+                                            </option>
+                                        </select>
+                                    </Field>
+
+                                    {/* Rate */}
+                                    {form.data.rate_type === 'daily' ? (
+                                        <Field
+                                            data-invalid={!!errors.daily_rate}
+                                            className="sm:col-span-2"
+                                        >
+                                            <FieldLabel htmlFor="employee-daily_rate">
+                                                Daily rate
+                                            </FieldLabel>
+
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                                    ₱
+                                                </span>
+
+                                                <Input
+                                                    id="employee-daily_rate"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="500.00"
+                                                    className="pl-8 font-mono"
+                                                    value={
+                                                        form.data.daily_rate ?? ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            'daily_rate',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    aria-invalid={
+                                                        !!errors.daily_rate
+                                                    }
+                                                />
+                                            </div>
+
+                                            <p className="text-xs text-muted-foreground">
+                                                Payroll uses this amount for each
+                                                payable attendance day.
+                                            </p>
+
+                                            {errors.daily_rate && (
+                                                <p className="text-xs text-destructive">
+                                                    {errors.daily_rate}
+                                                </p>
+                                            )}
+                                        </Field>
+                                    ) : (
+                                        <Field
+                                            data-invalid={!!errors.basic_rate}
+                                            className="sm:col-span-2"
+                                        >
+                                            <FieldLabel htmlFor="employee-basic_rate">
+                                                Monthly basic rate
+                                            </FieldLabel>
+
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                                    ₱
+                                                </span>
+
+                                                <Input
+                                                    id="employee-basic_rate"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    placeholder="15,000.00"
+                                                    className="pl-8 font-mono"
+                                                    value={
+                                                        form.data.basic_rate ?? ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            'basic_rate',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    aria-invalid={
+                                                        !!errors.basic_rate
+                                                    }
+                                                />
+                                            </div>
+
+                                            <p className="text-xs text-muted-foreground">
+                                                Monthly basic salary used for
+                                                payroll calculations.
+                                            </p>
+
+                                            {errors.basic_rate && (
+                                                <p className="text-xs text-destructive">
+                                                    {errors.basic_rate}
+                                                </p>
+                                            )}
+                                        </Field>
+                                    )}
+
+                                    {/* Date hired */}
+                                    <Field
+                                        data-invalid={!!errors.date_hired}
+                                        className="sm:col-span-2"
+                                    >
+                                        <FieldLabel htmlFor="employee-date_hired">
+                                            Date hired
+                                        </FieldLabel>
+
+                                        <div className="relative">
+                                            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                                            <Input
+                                                id="employee-date_hired"
+                                                type="date"
+                                                className="pl-9"
+                                                value={form.data.date_hired}
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'date_hired',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                aria-invalid={
+                                                    !!errors.date_hired
+                                                }
+                                            />
+                                        </div>
+
+                                        {errors.date_hired && (
+                                            <p className="text-xs text-destructive">
+                                                {errors.date_hired}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* GOVERNMENT IDS */}
+                        <section>
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <IdCard className="size-4" />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-semibold">
+                                        Government IDs
+                                    </h3>
+
+                                    <p className="text-xs text-muted-foreground">
+                                        Optional government identification numbers.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border bg-card p-5">
+                                <div className="grid gap-5 sm:grid-cols-2">
+
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-sss_no">
+                                            SSS No.
+                                        </FieldLabel>
+
+                                        <Input
+                                            id="employee-sss_no"
+                                            placeholder="Optional"
+                                            value={form.data.sss_no}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'sss_no',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-philhealth_no">
+                                            PhilHealth No.
+                                        </FieldLabel>
+
+                                        <Input
+                                            id="employee-philhealth_no"
+                                            placeholder="Optional"
+                                            value={form.data.philhealth_no}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'philhealth_no',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-pagibig_no">
+                                            Pag-IBIG No.
+                                        </FieldLabel>
+
+                                        <Input
+                                            id="employee-pagibig_no"
+                                            placeholder="Optional"
+                                            value={form.data.pagibig_no}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'pagibig_no',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+
+                                    <Field>
+                                        <FieldLabel htmlFor="employee-tin">
+                                            TIN
+                                        </FieldLabel>
+
+                                        <Input
+                                            id="employee-tin"
+                                            placeholder="Optional"
+                                            value={form.data.tin}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'tin',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
                 </form>
 
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="submit"
-                        form="employee-form"
-                        disabled={form.processing}
-                    >
-                        {form.processing
-                            ? 'Saving…'
-                            : isEditMode
-                              ? 'Save changes'
-                              : 'Add employee'}
-                    </Button>
+                {/* Footer */}
+                <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/20 px-6 py-4">
+                    <p className="hidden text-xs text-muted-foreground sm:block">
+                        {isEditMode
+                            ? 'Changes will be saved to this employee record.'
+                            : 'Fields marked by validation errors must be corrected.'}
+                    </p>
+
+                    <div className="ml-auto flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={form.processing}
+                        >
+                            Cancel
+                        </Button>
+
+                        <Button
+                            type="submit"
+                            form="employee-form"
+                            disabled={form.processing}
+                        >
+                            {form.processing
+                                ? 'Saving…'
+                                : isEditMode
+                                  ? 'Save changes'
+                                  : 'Add employee'}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
