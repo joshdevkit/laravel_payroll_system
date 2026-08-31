@@ -4,11 +4,11 @@ import { router } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PayrollRegisterTable } from '@/components/payroll-run/PayrollRegisterTable';
-import { PayrollItemMobileCard } from '@/components/payroll-run/PayrollRegisterTable';
 import { FlashMessage } from '@/components/layout/FlashMessage';
 import type { PayrollRun } from '@/components/payroll-run/types';
 import { formatDate, statusClass } from '@/components/payroll-run/payrollRunUtils';
 import { exportPayrollRunToExcel } from '@/hooks/exportPayrollRun';
+import  PayrollItemMobileCard  from '@/components/payroll-run/PayrollItemMobileCard';
 
 export default function Show({ payrollRun }: { payrollRun: PayrollRun }) {
     const [confirming, setConfirming] = useState(false);

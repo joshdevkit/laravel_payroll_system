@@ -54,7 +54,10 @@ class PayrollRunService
         }
 
         $employeeIds = Employee::query()->pluck('id');
-        $existingEmployeeIds = $run->items()->pluck('employee_id');
+
+        $existingEmployeeIds = $run
+            ->items()
+            ->pluck('employee_id');
 
         $missingEmployees = $employeeIds->diff(
             $existingEmployeeIds
@@ -113,9 +116,9 @@ class PayrollRunService
                     $calculated['item'],
                     [
                         'calculation_snapshot' =>
-                        $calculated['summary'],
+                            $calculated['summary'],
                     ]
-                ),
+                )
             );
 
             $item->scheduleDetails()->delete();
@@ -126,37 +129,57 @@ class PayrollRunService
             ) {
                 PayrollScheduleDetail::create([
                     'payroll_item_id' => $item->id,
-                    'work_date' => $detail['date'],
-                    'segment_no' => $detail['segmentNo'],
+
+                    'work_date' =>
+                        $detail['date'],
+
+                    'segment_no' =>
+                        $detail['segmentNo'],
+
                     'scheduled_start' =>
-                    $detail['scheduledStart'],
+                        $detail['scheduledStart'],
+
                     'scheduled_end' =>
-                    $detail['scheduledEnd'],
+                        $detail['scheduledEnd'],
+
                     'actual_in' =>
-                    $detail['actualIn'],
+                        $detail['actualIn'],
+
                     'actual_out' =>
-                    $detail['actualOut'],
+                        $detail['actualOut'],
+
                     'scheduled_minutes' =>
-                    $detail['scheduledMinutes'],
+                        $detail['scheduledMinutes'],
+
                     'break_minutes' =>
-                    $detail['breakMinutes'],
+                        $detail['breakMinutes'],
+
                     'worked_minutes' =>
-                    $detail['workedMinutes'],
+                        $detail['workedMinutes'],
+
                     'late_minutes' =>
-                    $detail['lateMinutes'],
+                        $detail['lateMinutes'],
+
                     'undertime_minutes' =>
-                    $detail['undertimeMinutes'],
+                        $detail['undertimeMinutes'],
+
                     'overtime_minutes' =>
-                    $detail['overtimeMinutes'],
+                        $detail['overtimeMinutes'],
+
                     'night_diff_minutes' =>
-                    $detail['nightDiffMinutes'],
+                        $detail['nightDiffMinutes'],
+
                     'is_present' =>
-                    $detail['isPresent'],
+                        $detail['isPresent'],
+
                     'overtime_pay' =>
-                    $detail['overtimePay'],
+                        $detail['overtimePay'],
+
                     'night_diff_pay' =>
-                    $detail['nightDiffPay'],
-                    'calculation_notes' => null,
+                        $detail['nightDiffPay'],
+
+                    'calculation_notes' =>
+                        $detail['calculationNotes'] ?? null,
                 ]);
             }
         }
@@ -165,17 +188,13 @@ class PayrollRunService
     /**
      * Calculate one employee's payroll.
      *
-     * Important rules:
+     * Tardiness:
      *
-     * - Basic pay is based on PRESENT SCHEDULE SEGMENTS.
-     * - A split shift can therefore contain multiple paid
-     *   schedule segments.
-     * - NSD is additional compensation.
-     * - Tardy is a SEPARATE deduction.
+     * - Calculated independently for every schedule segment.
+     * - Sum of all segment tardiness becomes late_minutes.
+     * - Sum of all segment tardy deductions becomes tardy_deduction.
      * - Tardy does NOT reduce basic_pay.
-     * - Tardy is calculated from employee_schedule start_time
-     *   versus actual attendance time_in.
-     * - Total deductions include tardy.
+     * - Tardy IS included in total_deductions.
      * - Net pay = total earnings - total deductions.
      */
     private function calculateEmployee(
@@ -203,34 +222,46 @@ class PayrollRunService
             );
 
         /*
-         * Date-specific employee schedules.
+         * Date-specific schedules.
          */
         $schedules = EmployeeSchedule::query()
-            ->where('employee_id', $employee->id)
+            ->where(
+                'employee_id',
+                $employee->id
+            )
             ->whereBetween(
                 'work_date',
                 [$start, $end]
             )
-            ->where('is_working_day', true)
+            ->where(
+                'is_working_day',
+                true
+            )
             ->orderBy('work_date')
             ->orderBy('segment_no')
             ->get();
 
         /*
-         * Include one day before and one day after the cutoff
-         * because an overnight shift may cross midnight.
+         * Include one day before and one day after
+         * because overnight shifts can cross midnight.
          */
         $attendance = Attendance::query()
-            ->where('employee_id', $employee->id)
-            ->whereBetween('work_date', [
-                Carbon::parse($start)
-                    ->subDay()
-                    ->toDateString(),
+            ->where(
+                'employee_id',
+                $employee->id
+            )
+            ->whereBetween(
+                'work_date',
+                [
+                    Carbon::parse($start)
+                        ->subDay()
+                        ->toDateString(),
 
-                Carbon::parse($end)
-                    ->addDay()
-                    ->toDateString(),
-            ])
+                    Carbon::parse($end)
+                        ->addDay()
+                        ->toDateString(),
+                ]
+            )
             ->get();
 
         $details = [];
@@ -240,12 +271,6 @@ class PayrollRunService
         $presentDates = [];
         $scheduledDates = [];
 
-        /*
-         * Keep the existing split-shift basic-pay behavior.
-         *
-         * One successfully matched schedule segment =
-         * one daily-rate equivalent.
-         */
         $presentSegments = 0;
 
         $lateMinutes = 0;
@@ -265,11 +290,24 @@ class PayrollRunService
         /*
          * NEW:
          *
-         * Total tardy deduction.
-         *
-         * This is kept separate from basic pay.
+         * Total tardy monetary deduction.
          */
         $tardyDeduction = 0.0;
+
+        /*
+         * Hourly/minute rate used by tardiness,
+         * overtime and NSD.
+         */
+        $dailyWorkHours = max(
+            1,
+            (float) $settings->daily_work_hours
+        );
+
+        $hourlyRate =
+            $rate / $dailyWorkHours;
+
+        $tardyPerMinute =
+            $hourlyRate / 60;
 
         foreach ($schedules as $schedule) {
             $date = Carbon::parse(
@@ -293,9 +331,7 @@ class PayrollRunService
             );
 
             /*
-             * Scheduled paid minutes after the schedule's break.
-             *
-             * This is used for NSD eligibility.
+             * Scheduled paid minutes after break.
              */
             $scheduledMinutes = max(
                 0,
@@ -309,16 +345,14 @@ class PayrollRunService
             $record = null;
 
             /*
-             * Match attendance to the EXACT schedule:
-             *
-             * - employee
-             * - work date
-             * - segment number
-             * - present status
-             * - actual attendance overlaps schedule
+             * Match attendance to exact schedule.
              */
             foreach ($attendance as $candidate) {
-                if (isset($usedAttendance[$candidate->id])) {
+                if (
+                    isset(
+                        $usedAttendance[$candidate->id]
+                    )
+                ) {
                     continue;
                 }
 
@@ -328,7 +362,8 @@ class PayrollRunService
                     )->toDateString() !== $date
                     ||
                     (int) $candidate->segment_no
-                    !== (int) $schedule->segment_no
+                        !==
+                    (int) $schedule->segment_no
                     ||
                     $candidate->status !== 'present'
                 ) {
@@ -358,55 +393,80 @@ class PayrollRunService
             }
 
             /*
-             * No attendance record for this schedule.
+             * No attendance.
              */
             if (! $record) {
                 $details[] = [
-                    'date' => $date,
+                    'date' =>
+                        $date,
+
                     'segmentNo' =>
-                    (int) $schedule->segment_no,
+                        (int) $schedule->segment_no,
 
                     'start' =>
-                    substr(
-                        (string) $schedule->start_time,
-                        0,
-                        5
-                    ),
+                        substr(
+                            (string) $schedule->start_time,
+                            0,
+                            5
+                        ),
 
                     'end' =>
-                    substr(
-                        (string) $schedule->end_time,
-                        0,
-                        5
-                    ),
+                        substr(
+                            (string) $schedule->end_time,
+                            0,
+                            5
+                        ),
 
                     'scheduledStart' =>
-                    $scheduleTime['from'],
+                        $scheduleTime['from'],
 
                     'scheduledEnd' =>
-                    $scheduleTime['to'],
+                        $scheduleTime['to'],
 
                     'scheduledMinutes' =>
-                    $scheduledMinutes,
+                        $scheduledMinutes,
 
                     'breakMinutes' =>
-                    (int) $schedule->break_minutes,
+                        (int) $schedule->break_minutes,
 
-                    'workedMinutes' => 0,
-                    'regularMinutes' => 0,
+                    'workedMinutes' =>
+                        0,
 
-                    'actualIn' => null,
-                    'actualOut' => null,
+                    'regularMinutes' =>
+                        0,
 
-                    'lateMinutes' => 0,
-                    'undertimeMinutes' => 0,
-                    'overtimeMinutes' => 0,
-                    'nightDiffMinutes' => 0,
+                    'actualIn' =>
+                        null,
 
-                    'isPresent' => false,
+                    'actualOut' =>
+                        null,
 
-                    'overtimePay' => 0,
-                    'nightDiffPay' => 0,
+                    'lateMinutes' =>
+                        0,
+
+                    'undertimeMinutes' =>
+                        0,
+
+                    'overtimeMinutes' =>
+                        0,
+
+                    'nightDiffMinutes' =>
+                        0,
+
+                    'isPresent' =>
+                        false,
+
+                    'overtimePay' =>
+                        0,
+
+                    'nightDiffPay' =>
+                        0,
+
+                    'tardyDeduction' =>
+                        0,
+
+                    'calculationNotes' =>
+                        null,
                 ];
 
                 continue;
@@ -423,23 +483,10 @@ class PayrollRunService
 
             $usedAttendance[$record->id] = true;
 
-            /*
-             * IMPORTANT:
-             *
-             * Keep this as one PRESENT SEGMENT.
-             *
-             * This preserves the existing payroll behavior
-             * where Joshua's:
-             *
-             * 8 AM - 5 PM
-             * 7 PM - 3 AM
-             *
-             * can represent two paid schedule segments.
-             */
             $presentSegments++;
 
             /*
-             * Actual worked time inside this schedule.
+             * Actual worked time.
              */
             $workedMinutes = $this->overlap(
                 $actual['from'],
@@ -449,10 +496,7 @@ class PayrollRunService
             );
 
             /*
-             * Regular minutes are used for attendance detail.
-             *
-             * The scheduled break is only removed when the
-             * actual attendance overlaps the break period.
+             * Regular paid minutes.
              */
             $regularMinutes =
                 $this->calculateRegularPaidMinutes(
@@ -464,70 +508,76 @@ class PayrollRunService
                 );
 
             /*
- * TARDY
- *
- * Calculate tardy strictly from the scheduled START TIME
- * and the employee's actual TIME-IN.
- *
- * Example:
- *
- * Scheduled: 08:00
- * Actual:    08:10
- *
- * Tardy = 10 minutes
- *
- * Daily rate:
- * ₱500 / 8 hours = ₱62.50/hour
- * ₱62.50 / 60 = ₱1.041666/minute
- *
- * 10 × ₱1.041666 = ₱10.42
- */
+             * ==================================================
+             * TARDINESS
+             * ==================================================
+             *
+             * IMPORTANT:
+             *
+             * We calculate tardiness from the schedule's
+             * actual date/time, NOT just the clock time.
+             *
+             * This prevents overnight/multiple schedules
+             * from interfering with each other.
+             *
+             * Example:
+             *
+             * Aug 24:
+             * Schedule = 08:00
+             * Time in  = 08:10:25
+             *
+             * Tardy = 10 minutes
+             *
+             * Aug 25:
+             * Schedule = 19:00
+             * Time in  = 19:04:31
+             *
+             * Tardy = 4 minutes
+             *
+             * Total = 14 minutes
+             */
+
+            $scheduledStart = $scheduleTime['from'];
+
+            $actualTimeIn = $actual['from'];
 
             /*
- * Get the scheduled start clock time.
- */
-            $scheduledStartMinutes =
-                $this->timeMinutes(
-                    (string) $schedule->start_time
+             * Raw tardy.
+             *
+             * Use the exact datetime difference.
+             */
+            $rawLateSeconds =
+                $scheduledStart->diffInSeconds(
+                    $actualTimeIn,
+                    false
                 );
 
-            /*
- * Get the actual TIME-IN clock time.
- */
-            $actualTimeIn = Carbon::parse(
-                $record->time_in
-            );
-
-            $actualStartMinutes =
-                ($actualTimeIn->hour * 60)
-                + $actualTimeIn->minute;
-
-            /*
- * Raw tardy.
- *
- * Only count minutes when the employee actually
- * clocked in AFTER the scheduled start.
- */
-            $late = max(
+            $rawLateMinutes = max(
                 0,
-                $actualStartMinutes
-                    - $scheduledStartMinutes
+                (int) floor(
+                    $rawLateSeconds / 60
+                )
             );
 
             /*
- * Apply grace period.
- *
- * Example:
- * 10 minutes late
- * 0 minute grace
- * = 10 tardy minutes
- *
- * If grace is 5:
- * 10 - 5 = 5 tardy minutes
- */
+             * Apply grace period.
+             *
+             * Example:
+             *
+             * Actual 08:10:25
+             * Scheduled 08:00
+             *
+             * Raw = 10 minutes
+             *
+             * If grace = 0:
+             * 10 minutes
+             *
+             * If grace = 5:
+             * 5 minutes
+             */
             $late = max(
                 0,
-                $late
+                $rawLateMinutes
                     - max(
                         0,
                         (int) $settings->late_grace_minutes
@@ -535,50 +585,15 @@ class PayrollRunService
             );
 
             /*
- * Tardy deduction.
- *
- * ₱500 / 8 = ₱62.50/hour
- * ₱62.50 / 60 = ₱1.041666/minute
- */
-            $dailyWorkHours = max(
-                1,
-                (float) $settings->daily_work_hours
-            );
-
-            $hourlyRate =
-                $rate / $dailyWorkHours;
-
-            $tardyPerMinute =
-                $hourlyRate / 60;
-
+             * Monetary tardy deduction.
+             */
             $segmentTardyDeduction =
                 $late * $tardyPerMinute;
-
-            $tardyDeduction +=
-                $segmentTardyDeduction;
 
             /*
-             * Tardy deduction:
-             *
-             * ₱500 / 8 hours = ₱62.50/hour
-             *
-             * ₱62.50 / 60 = ₱1.041666/minute
-             *
-             * 10 minutes:
-             *
-             * ₱1.041666 × 10 = ₱10.42
-             *
-             * IMPORTANT:
-             * This does NOT reduce basic_pay.
+             * Add to employee totals.
              */
-            $hourlyRate = (float) $settings->daily_work_hours > 0
-                ? $rate / (float) $settings->daily_work_hours
-                : 0;
-
-            $tardyPerMinute = $hourlyRate / 60;
-
-            $segmentTardyDeduction =
-                $late * $tardyPerMinute;
+            $lateMinutes += $late;
 
             $tardyDeduction +=
                 $segmentTardyDeduction;
@@ -595,7 +610,7 @@ class PayrollRunService
             );
 
             /*
-             * Overtime begins after scheduled end.
+             * Overtime.
              */
             $rawOvertime = max(
                 0,
@@ -616,23 +631,7 @@ class PayrollRunService
                 : 0;
 
             /*
-             * Night Shift Differential.
-             *
-             * NSD is an additional compensation:
-             *
-             * hourly rate × NSD multiplier × eligible NSD hours.
-             *
-             * Example:
-             *
-             * ₱500 / 8 = ₱62.50
-             *
-             * ₱62.50 × 10% = ₱6.25/hour
-             *
-             * 5 hours in NSD window
-             * less 1-hour break
-             * = 4 eligible hours
-             *
-             * ₱6.25 × 4 = ₱25.00
+             * NSD.
              */
             $nsd = $this->calculateNightDiffMinutes(
                 $actual['from'],
@@ -645,11 +644,17 @@ class PayrollRunService
                 $settings
             );
 
+            /*
+             * Overtime pay.
+             */
             $segmentOvertimePay =
                 ($overtime / 60)
                 * $hourlyRate
                 * (float) $settings->overtime_multiplier;
 
+            /*
+             * NSD pay.
+             */
             $segmentNightDiffPay =
                 ($nsd / 60)
                 * $hourlyRate
@@ -657,7 +662,6 @@ class PayrollRunService
 
             $presentDates[$date] = true;
 
-            $lateMinutes += $late;
             $undertimeMinutes += $undertime;
             $overtimeMinutes += $overtime;
             $nightDiffMinutes += $nsd;
@@ -669,117 +673,122 @@ class PayrollRunService
                 $segmentNightDiffPay;
 
             $details[] = [
-                'date' => $date,
+                'date' =>
+                    $date,
 
                 'segmentNo' =>
-                (int) $schedule->segment_no,
+                    (int) $schedule->segment_no,
 
                 'start' =>
-                substr(
-                    (string) $schedule->start_time,
-                    0,
-                    5
-                ),
+                    substr(
+                        (string) $schedule->start_time,
+                        0,
+                        5
+                    ),
 
                 'end' =>
-                substr(
-                    (string) $schedule->end_time,
-                    0,
-                    5
-                ),
+                    substr(
+                        (string) $schedule->end_time,
+                        0,
+                        5
+                    ),
 
                 'scheduledStart' =>
-                $scheduleTime['from'],
+                    $scheduleTime['from'],
 
                 'scheduledEnd' =>
-                $scheduleTime['to'],
+                    $scheduleTime['to'],
 
                 'scheduledMinutes' =>
-                $scheduledMinutes,
+                    $scheduledMinutes,
 
                 'breakMinutes' =>
-                (int) $schedule->break_minutes,
+                    (int) $schedule->break_minutes,
 
                 'workedMinutes' =>
-                $workedMinutes,
+                    $workedMinutes,
 
                 'regularMinutes' =>
-                $regularMinutes,
+                    $regularMinutes,
 
                 'actualIn' =>
-                $record->time_in,
+                    $record->time_in,
 
                 'actualOut' =>
-                $record->time_out,
-
-                'lateMinutes' =>
-                $late,
-
-                'undertimeMinutes' =>
-                $undertime,
-
-                'overtimeMinutes' =>
-                $overtime,
-
-                'nightDiffMinutes' =>
-                $nsd,
-
-                'isPresent' =>
-                true,
-
-                'overtimePay' =>
-                $this->money(
-                    $segmentOvertimePay
-                ),
-
-                'nightDiffPay' =>
-                $this->money(
-                    $segmentNightDiffPay
-                ),
+                    $record->time_out,
 
                 /*
-                 * Keep tardy calculation visible in
-                 * the calculation snapshot even though
-                 * payroll_schedule_details does not
-                 * currently have a tardy_deduction column.
+                 * THIS is the per-schedule tardy.
+                 */
+                'lateMinutes' =>
+                    $late,
+
+                /*
+                 * Raw tardy is useful for debugging.
+                 */
+                'rawLateMinutes' =>
+                    $rawLateMinutes,
+
+                'graceMinutes' =>
+                    (int) $settings->late_grace_minutes,
+
+                'undertimeMinutes' =>
+                    $undertime,
+
+                'overtimeMinutes' =>
+                    $overtime,
+
+                'nightDiffMinutes' =>
+                    $nsd,
+
+                'isPresent' =>
+                    true,
+
+                'overtimePay' =>
+                    $this->money(
+                        $segmentOvertimePay
+                    ),
+
+                'nightDiffPay' =>
+                    $this->money(
+                        $segmentNightDiffPay
+                    ),
+
+                /*
+                 * Monetary tardy for this schedule.
                  */
                 'tardyDeduction' =>
-                $this->money(
-                    $segmentTardyDeduction
-                ),
+                    $this->money(
+                        $segmentTardyDeduction
+                    ),
+
+                'calculationNotes' =>
+                    'Tardy: '
+                    . $late
+                    . ' min × ₱'
+                    . number_format(
+                        $tardyPerMinute,
+                        6
+                    )
+                    . '/min',
             ];
         }
 
         /*
-         * Present days remain CALENDAR DAYS.
-         *
-         * Multiple schedule segments on the same date
-         * still count as one present day.
+         * Present calendar days.
          */
-        $presentDays = count($presentDates);
+        $presentDays =
+            count($presentDates);
 
         /*
-         * IMPORTANT:
-         *
-         * Do NOT use regularPaidMinutes here.
-         *
-         * The previous change caused Joshua's earnings
-         * to become ₱921.88.
-         *
-         * The existing intended behavior is:
-         *
-         * present schedule segment × daily rate.
-         *
-         * Therefore:
-         *
-         * 2 present segments × ₱500
-         * = ₱1,000 basic pay.
+         * Basic pay remains based on
+         * present schedule segments.
          */
         $basicPay =
             $presentSegments * $rate;
 
         /*
-         * Scheduled dates that have no attendance.
+         * Absent days.
          */
         $absentDays = count(
             array_diff_key(
@@ -833,7 +842,8 @@ class PayrollRunService
             );
 
             while ($day->lte($leaveEnd)) {
-                $date = $day->toDateString();
+                $date =
+                    $day->toDateString();
 
                 if (
                     $date >= $start
@@ -860,11 +870,10 @@ class PayrollRunService
 
         /*
          * Holiday calculation.
-         *
-         * Only the additional holiday premium is added.
-         * Basic pay already contains the regular amount.
          */
-        $holidays = DB::table('holidays')
+        $holidays = DB::table(
+            'holidays'
+        )
             ->whereBetween(
                 'date',
                 [$start, $end]
@@ -872,13 +881,16 @@ class PayrollRunService
             ->get();
 
         foreach ($holidays as $holiday) {
-            $holidayDate = Carbon::parse(
-                $holiday->date
-            )->toDateString();
+            $holidayDate =
+                Carbon::parse(
+                    $holiday->date
+                )->toDateString();
 
-            if (! isset(
-                $presentDates[$holidayDate]
-            )) {
+            if (
+                ! isset(
+                    $presentDates[$holidayDate]
+                )
+            ) {
                 continue;
             }
 
@@ -887,11 +899,11 @@ class PayrollRunService
             $multiplier =
                 $holiday->type === 'regular'
                 ? (float)
-                $settings
-                    ->holiday_regular_multiplier
+                    $settings
+                        ->holiday_regular_multiplier
                 : (float)
-                $settings
-                    ->holiday_special_multiplier;
+                    $settings
+                        ->holiday_special_multiplier;
 
             if (
                 (bool)
@@ -908,9 +920,13 @@ class PayrollRunService
         }
 
         /*
+         * ==================================================
          * TOTAL EARNINGS
+         * ==================================================
          *
-         * Tardy is NOT deducted here.
+         * IMPORTANT:
+         *
+         * Tardy is NOT removed here.
          */
         $totalEarnings =
             $basicPay
@@ -920,8 +936,7 @@ class PayrollRunService
             + $leavePay;
 
         /*
-         * Other deductions currently configured
-         * by this service.
+         * Other deductions.
          */
         $sssDeduction = 0.0;
         $philhealthDeduction = 0.0;
@@ -931,9 +946,11 @@ class PayrollRunService
         $otherDeductions = 0.0;
 
         /*
+         * ==================================================
          * TOTAL DEDUCTIONS
+         * ==================================================
          *
-         * Tardy is now included.
+         * Tardy is explicitly included.
          */
         $totalDeductions =
             $tardyDeduction
@@ -945,260 +962,275 @@ class PayrollRunService
             + $otherDeductions;
 
         /*
+         * ==================================================
          * NET PAY
+         * ==================================================
          */
         $netPay =
             $totalEarnings
             - $totalDeductions;
 
+        /*
+         * Summary.
+         */
         $summary = [
             'presentDays' =>
-            $presentDays,
+                $presentDays,
 
             'absentDays' =>
-            $absentDays,
+                $absentDays,
 
             'leaveDays' =>
-            $paidLeaveDays
+                $paidLeaveDays
                 + $unpaidLeaveDays,
 
             'paidLeaveDays' =>
-            $paidLeaveDays,
-
-            'unpaidLeaveDays' =>
-            $unpaidLeaveDays,
-
-            'holidayDays' =>
-            $holidayDays,
-
-            'lateMinutes' =>
-            $lateMinutes,
-
-            'tardyMinutes' =>
-            $lateMinutes,
-
-            'tardyDeduction' =>
-            $this->money(
-                $tardyDeduction
-            ),
-
-            'undertimeMinutes' =>
-            $undertimeMinutes,
-
-            'overtimeMinutes' =>
-            $overtimeMinutes,
-
-            'nightDiffMinutes' =>
-            $nightDiffMinutes,
-
-            'overtimePay' =>
-            $this->money(
-                $overtimePay
-            ),
-
-            'nightDiffPay' =>
-            $this->money(
-                $nightDiffPay
-            ),
-
-            'holidayPay' =>
-            $this->money(
-                $holidayPay
-            ),
-
-            'leavePay' =>
-            $this->money(
-                $leavePay
-            ),
-
-            'scheduledWorkdays' =>
-            count($scheduledDates),
-
-            'paidDays' =>
-            $presentDays
-                + $paidLeaveDays,
-
-            'totalEarnings' =>
-            $this->money(
-                $totalEarnings
-            ),
-
-            'totalDeductions' =>
-            $this->money(
-                $totalDeductions
-            ),
-
-            'netPay' =>
-            $this->money(
-                $netPay
-            ),
-
-            'scheduleDetails' =>
-            $details,
-        ];
-
-        return [
-            'summary' =>
-            $summary,
-
-            'item' => [
-                'employee_id' =>
-                $employee->id,
-
-                'scheduled_workdays' =>
-                count($scheduledDates),
-
-                'present_days' =>
-                $presentDays,
-
-                'absent_days' =>
-                $absentDays,
-
-                'leave_days' =>
-                $paidLeaveDays
-                    + $unpaidLeaveDays,
-
-                'paid_leave_days' =>
                 $paidLeaveDays,
 
-                'unpaid_leave_days' =>
+            'unpaidLeaveDays' =>
                 $unpaidLeaveDays,
 
-                'holiday_days' =>
+            'holidayDays' =>
                 $holidayDays,
 
-                'late_minutes' =>
+            /*
+             * Total tardy across ALL schedules.
+             *
+             * Example:
+             * 10 + 4 = 14
+             */
+            'lateMinutes' =>
                 $lateMinutes,
 
-                'undertime_minutes' =>
-                $undertimeMinutes,
+            'tardyMinutes' =>
+                $lateMinutes,
 
-                'overtime_minutes' =>
-                $overtimeMinutes,
-
-                'night_diff_minutes' =>
-                $nightDiffMinutes,
-
-                /*
-                 * BASIC PAY IS PRESERVED.
-                 *
-                 * Joshua:
-                 * 2 present segments × ₱500
-                 * = ₱1,000.
-                 */
-                'basic_pay' =>
+            /*
+             * Total monetary tardy deduction.
+             */
+            'tardyDeduction' =>
                 $this->money(
-                    $basicPay
+                    $tardyDeduction
                 ),
 
-                'overtime_pay' =>
+            'undertimeMinutes' =>
+                $undertimeMinutes,
+
+            'overtimeMinutes' =>
+                $overtimeMinutes,
+
+            'nightDiffMinutes' =>
+                $nightDiffMinutes,
+
+            'overtimePay' =>
                 $this->money(
                     $overtimePay
                 ),
 
-                'holiday_pay' =>
-                $this->money(
-                    $holidayPay
-                ),
-
-                'night_diff' =>
+            'nightDiffPay' =>
                 $this->money(
                     $nightDiffPay
                 ),
 
-                'leave_pay' =>
+            'holidayPay' =>
+                $this->money(
+                    $holidayPay
+                ),
+
+            'leavePay' =>
                 $this->money(
                     $leavePay
                 ),
 
+            'scheduledWorkdays' =>
+                count($scheduledDates),
+
+            'paidDays' =>
+                $presentDays
+                + $paidLeaveDays,
+
+            'totalEarnings' =>
+                $this->money(
+                    $totalEarnings
+                ),
+
+            'totalDeductions' =>
+                $this->money(
+                    $totalDeductions
+                ),
+
+            'netPay' =>
+                $this->money(
+                    $netPay
+                ),
+
+            'scheduleDetails' =>
+                $details,
+        ];
+
+        /*
+         * Payroll item database values.
+         */
+        return [
+            'summary' =>
+                $summary,
+
+            'item' => [
+                'employee_id' =>
+                    $employee->id,
+
+                'scheduled_workdays' =>
+                    count($scheduledDates),
+
+                'present_days' =>
+                    $presentDays,
+
+                'absent_days' =>
+                    $absentDays,
+
+                'leave_days' =>
+                    $paidLeaveDays
+                    + $unpaidLeaveDays,
+
+                'paid_leave_days' =>
+                    $paidLeaveDays,
+
+                'unpaid_leave_days' =>
+                    $unpaidLeaveDays,
+
+                'holiday_days' =>
+                    $holidayDays,
+
+                /*
+                 * TOTAL TARDY MINUTES.
+                 */
+                'late_minutes' =>
+                    $lateMinutes,
+
+                'undertime_minutes' =>
+                    $undertimeMinutes,
+
+                'overtime_minutes' =>
+                    $overtimeMinutes,
+
+                'night_diff_minutes' =>
+                    $nightDiffMinutes,
+
+                /*
+                 * Basic pay is NOT reduced by tardy.
+                 */
+                'basic_pay' =>
+                    $this->money(
+                        $basicPay
+                    ),
+
+                'overtime_pay' =>
+                    $this->money(
+                        $overtimePay
+                    ),
+
+                'holiday_pay' =>
+                    $this->money(
+                        $holidayPay
+                    ),
+
+                'night_diff' =>
+                    $this->money(
+                        $nightDiffPay
+                    ),
+
+                'leave_pay' =>
+                    $this->money(
+                        $leavePay
+                    ),
+
                 'bonus' =>
-                0,
+                    0,
 
                 /*
                  * Existing deductions.
                  */
                 'sss_deduction' =>
-                $this->money(
-                    $sssDeduction
-                ),
+                    $this->money(
+                        $sssDeduction
+                    ),
 
                 'philhealth_deduction' =>
-                $this->money(
-                    $philhealthDeduction
-                ),
+                    $this->money(
+                        $philhealthDeduction
+                    ),
 
                 'pagibig_deduction' =>
-                $this->money(
-                    $pagibigDeduction
-                ),
+                    $this->money(
+                        $pagibigDeduction
+                    ),
 
                 'tax_deduction' =>
-                $this->money(
-                    $taxDeduction
-                ),
+                    $this->money(
+                        $taxDeduction
+                    ),
 
                 'leave_deduction' =>
-                $this->money(
-                    $leaveDeduction
-                ),
+                    $this->money(
+                        $leaveDeduction
+                    ),
 
                 'other_deductions' =>
-                $this->money(
-                    $otherDeductions
-                ),
+                    $this->money(
+                        $otherDeductions
+                    ),
 
                 /*
-                 * If your payroll_items table contains these
-                 * columns, they will persist the calculated
-                 * tardy/earnings values directly.
+                 * NEW DATABASE COLUMN.
                  *
-                 * The existing service's generated columns
-                 * can also derive these from the component
-                 * columns if your migration defines them
-                 * as generated columns.
+                 * This is the actual money deducted
+                 * because of tardiness.
                  */
                 'tardy_deduction' =>
-                $this->money(
-                    $tardyDeduction
-                ),
+                    $this->money(
+                        $tardyDeduction
+                    ),
 
+                /*
+                 * Final payroll values.
+                 */
                 'total_earnings' =>
+                    $this->money(
+                        $totalEarnings
+                    ),
+
+                'total_deductions' =>
+                    $this->money(
+                        $totalDeductions
+                    ),
+
+                'net_pay' =>
+                    $this->money(
+                        $netPay
+                    ),
+            ],
+
+            'calculatedTotalEarnings' =>
                 $this->money(
                     $totalEarnings
                 ),
 
-                'total_deductions' =>
+            'calculatedTotalDeductions' =>
                 $this->money(
                     $totalDeductions
                 ),
 
-                'net_pay' =>
+            'calculatedNetPay' =>
                 $this->money(
                     $netPay
                 ),
-            ],
-
-            'calculatedTotalEarnings' =>
-            $this->money(
-                $totalEarnings
-            ),
-
-            'calculatedTotalDeductions' =>
-            $this->money(
-                $totalDeductions
-            ),
-
-            'calculatedNetPay' =>
-            $this->money(
-                $netPay
-            ),
         ];
     }
 
     /**
      * Calculate paid regular minutes.
      *
-     * The break is only deducted when the actual attendance
+     * Break is deducted only when the actual attendance
      * overlaps the scheduled break.
      */
     private function calculateRegularPaidMinutes(
@@ -1226,20 +1258,6 @@ class PayrollRunService
             );
         }
 
-        /*
-         * Break is positioned immediately before
-         * the scheduled end.
-         *
-         * Example:
-         *
-         * 08:00-17:00
-         * 60 minute break
-         *
-         * => 16:00-17:00
-         *
-         * For the payroll's schedule definition,
-         * this preserves the existing break behavior.
-         */
         $breakDuration = min(
             $breakMinutes,
             $this->duration(
@@ -1248,14 +1266,18 @@ class PayrollRunService
             )
         );
 
+        /*
+         * Break is positioned immediately before
+         * scheduled end.
+         */
         $breakEnd =
             $scheduleEnd->copy();
 
         $breakStart =
             $breakEnd->copy()
-            ->subMinutes(
-                $breakDuration
-            );
+                ->subMinutes(
+                    $breakDuration
+                );
 
         $actualBreakMinutes =
             $this->overlap(
@@ -1268,19 +1290,12 @@ class PayrollRunService
         return max(
             0,
             $workedMinutes
-                - $actualBreakMinutes
+            - $actualBreakMinutes
         );
     }
 
     /**
      * Calculate NSD minutes.
-     *
-     * NSD:
-     *
-     *   hourly rate × NSD multiplier × NSD hours
-     *
-     * The scheduled break is removed from the scheduled
-     * NSD eligibility.
      */
     private function calculateNightDiffMinutes(
         CarbonInterface $actualIn,
@@ -1294,7 +1309,7 @@ class PayrollRunService
     ): int {
         if (
             ! (bool)
-            $settings->night_diff_enabled
+                $settings->night_diff_enabled
             ||
             $actualOut->lessThanOrEqualTo(
                 $actualIn
@@ -1303,32 +1318,21 @@ class PayrollRunService
             return 0;
         }
 
-        /*
-         * Extend the NSD calculation through approved
-         * overtime.
-         */
         $overtimeEnd =
             $scheduleEnd->copy()
-            ->addMinutes(
-                max(
-                    0,
-                    $overtimeMinutes
-                )
-            );
+                ->addMinutes(
+                    max(
+                        0,
+                        $overtimeMinutes
+                    )
+                );
 
         $total = 0;
 
-        /*
-         * Check night windows around the schedule.
-         *
-         * This handles overnight schedules such as:
-         *
-         * 7 PM - 3 AM
-         */
         $baseDay =
             $scheduleStart
-            ->copy()
-            ->startOfDay();
+                ->copy()
+                ->startOfDay();
 
         for (
             $offset = -1;
@@ -1337,21 +1341,18 @@ class PayrollRunService
         ) {
             $day =
                 $baseDay
-                ->copy()
-                ->addDays($offset);
+                    ->copy()
+                    ->addDays($offset);
 
             $window =
                 $this->nightWindow(
                     $day,
                     (string)
-                    $settings->night_diff_start,
+                        $settings->night_diff_start,
                     (string)
-                    $settings->night_diff_end
+                        $settings->night_diff_end
                 );
 
-            /*
-             * Actual time inside NSD window.
-             */
             $workedNight =
                 $this->overlap(
                     $actualIn,
@@ -1364,9 +1365,6 @@ class PayrollRunService
                 continue;
             }
 
-            /*
-             * Scheduled portion inside NSD.
-             */
             $scheduledNight =
                 $this->overlap(
                     $scheduleStart,
@@ -1375,9 +1373,6 @@ class PayrollRunService
                     $window['to']
                 );
 
-            /*
-             * Overtime portion inside NSD.
-             */
             $overtimeNight =
                 $this->overlap(
                     $scheduleEnd,
@@ -1386,24 +1381,12 @@ class PayrollRunService
                     $window['to']
                 );
 
-            /*
-             * Only scheduled paid minutes are eligible.
-             */
             $scheduledEligible =
                 min(
                     $scheduledNight,
                     $scheduledMinutes
                 );
 
-            /*
-             * Remove the schedule break.
-             *
-             * Example:
-             *
-             * 10 PM - 3 AM = 5 NSD hours
-             * less 1 hour break
-             * = 4 NSD hours
-             */
             $breakToRemove =
                 min(
                     $breakMinutes,
@@ -1414,17 +1397,13 @@ class PayrollRunService
                 max(
                     0,
                     $scheduledEligible
-                        - $breakToRemove
+                    - $breakToRemove
                 );
 
-            /*
-             * Actual NSD cannot exceed eligible scheduled
-             * NSD plus eligible overtime NSD.
-             */
             $total += min(
                 $workedNight,
                 $paidScheduledNight
-                    + $overtimeNight
+                + $overtimeNight
             );
         }
 
@@ -1436,9 +1415,6 @@ class PayrollRunService
 
     /**
      * Build schedule datetime bounds.
-     *
-     * If end time is equal to or earlier than start time,
-     * the schedule crosses midnight.
      */
     private function bounds(
         string $date,
@@ -1447,24 +1423,27 @@ class PayrollRunService
     ): array {
         $from = Carbon::parse(
             $date
-                . ' '
-                . substr(
-                    $start,
-                    0,
-                    5
-                )
+            . ' '
+            . substr(
+                $start,
+                0,
+                5
+            )
         );
 
         $to = Carbon::parse(
             $date
-                . ' '
-                . substr(
-                    $end,
-                    0,
-                    5
-                )
+            . ' '
+            . substr(
+                $end,
+                0,
+                5
+            )
         );
 
+        /*
+         * Overnight schedule.
+         */
         if (
             $this->timeMinutes($end)
             <=
@@ -1474,8 +1453,11 @@ class PayrollRunService
         }
 
         return [
-            'from' => $from,
-            'to' => $to,
+            'from' =>
+                $from,
+
+            'to' =>
+                $to,
         ];
     }
 
@@ -1514,8 +1496,11 @@ class PayrollRunService
         }
 
         return [
-            'from' => $from,
-            'to' => $to,
+            'from' =>
+                $from,
+
+            'to' =>
+                $to,
         ];
     }
 
@@ -1533,32 +1518,25 @@ class PayrollRunService
         $from =
             Carbon::parse(
                 $day
-                    . ' '
-                    . substr(
-                        $start,
-                        0,
-                        5
-                    )
+                . ' '
+                . substr(
+                    $start,
+                    0,
+                    5
+                )
             );
 
         $to =
             Carbon::parse(
                 $day
-                    . ' '
-                    . substr(
-                        $end,
-                        0,
-                        5
-                    )
+                . ' '
+                . substr(
+                    $end,
+                    0,
+                    5
+                )
             );
 
-        /*
-         * Overnight NSD window.
-         *
-         * Example:
-         *
-         * 22:00 - 06:00
-         */
         if (
             $this->timeMinutes($end)
             <=
@@ -1568,13 +1546,16 @@ class PayrollRunService
         }
 
         return [
-            'from' => $from,
-            'to' => $to,
+            'from' =>
+                $from,
+
+            'to' =>
+                $to,
         ];
     }
 
     /**
-     * Convert HH:MM into minutes from midnight.
+     * Convert HH:MM to minutes.
      */
     private function timeMinutes(
         string $value
@@ -1616,7 +1597,7 @@ class PayrollRunService
     }
 
     /**
-     * Difference between two datetimes in whole minutes.
+     * Difference between two datetimes.
      */
     private function roundedMinutesBetween(
         CarbonInterface $from,
@@ -1630,7 +1611,7 @@ class PayrollRunService
     }
 
     /**
-     * Return overlapping minutes between two datetime ranges.
+     * Return overlapping minutes.
      */
     private function overlap(
         CarbonInterface $a,

@@ -33,6 +33,7 @@ class PayrollItem extends Model
         'unpaid_leave_days',
         'holiday_days',
         'late_minutes',
+        'tardy_deduction',
         'undertime_minutes',
         'overtime_minutes',
         'night_diff_minutes',
@@ -48,23 +49,25 @@ class PayrollItem extends Model
         'tax_deduction',
         'leave_deduction',
         'other_deductions',
+        'total_earnings',
+        'total_deductions',
+        'net_pay',
         'calculation_snapshot',
     ];
 
     protected $casts = [
-        'scheduled_workdays' => 'integer',
-        'present_days' => 'integer',
+        'scheduled_workdays' => 'decimal:2',
+        'present_days' => 'decimal:2',
         'absent_days' => 'decimal:2',
         'leave_days' => 'decimal:2',
         'paid_leave_days' => 'decimal:2',
         'unpaid_leave_days' => 'decimal:2',
         'holiday_days' => 'decimal:2',
-
         'late_minutes' => 'integer',
+        'tardy_deduction' => 'decimal:2',
         'undertime_minutes' => 'integer',
         'overtime_minutes' => 'integer',
         'night_diff_minutes' => 'integer',
-
         'basic_pay' => 'decimal:2',
         'overtime_pay' => 'decimal:2',
         'holiday_pay' => 'decimal:2',
@@ -77,9 +80,11 @@ class PayrollItem extends Model
         'tax_deduction' => 'decimal:2',
         'leave_deduction' => 'decimal:2',
         'other_deductions' => 'decimal:2',
+        'total_earnings' => 'decimal:2',
+        'total_deductions' => 'decimal:2',
+        'net_pay' => 'decimal:2',
         'calculation_snapshot' => 'array',
     ];
-
     protected static function booted(): void
     {
         static::creating(function (PayrollItem $item) {

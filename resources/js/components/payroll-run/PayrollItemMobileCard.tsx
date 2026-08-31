@@ -7,7 +7,7 @@ import { formatDate, getDailyRate, num, peso, totalDeductions, totalEarnings } f
 const formatTime = (value: string | null) => value ? new Date(value).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : '—';
 const worked = (a: string | null, b: string | null) => { if (!a || !b) return 0; const x = new Date(a).getTime(), y = new Date(b).getTime(); return Number.isFinite(x) && Number.isFinite(y) && y > x ? Math.round((y - x) / 60000) : 0; };
 
-export function PayrollItemMobileCard({ item, leavePayEnabled }: { item: PayrollItem; leavePayEnabled: boolean }) {
+export default function PayrollItemMobileCard({ item, leavePayEnabled }: { item: PayrollItem; leavePayEnabled: boolean }) {
     const [expanded, setExpanded] = useState(false);
     const details = item.schedule_details ?? [];
     const employeeNumber = item.employee?.employee_id ?? item.employee_id;
