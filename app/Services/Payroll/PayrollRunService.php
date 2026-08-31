@@ -35,19 +35,35 @@ class PayrollRunService
 
     private function buildItems(PayrollRun $run, PayrollSetting $settings): void
     {
-        $employees = Employee::query()->orderBy('full_name')->get();
+        $start = $run->cutoff_start->toDateString();
+        $end = $run->cutoff_end->toDateString();
+
+        // Include employees represented by either schedules or attendance.
+        // Previously employees without schedules were silently skipped, which
+        // made a valid attendance-only cutoff generate zero payroll items.
+        $employeeIds = EmployeeSchedule::query()
+            ->whereBetween('work_date', [$start, $end])
+            ->pluck('employee_id')
+            ->merge(
+                Attendance::query()
+                    ->whereBetween('work_date', [$start, $end])
+                    ->pluck('employee_id')
+            )
+            ->unique()
+            ->values();
+
+        $employees = Employee::query()
+            ->whereIn('id', $employeeIds)
+            ->orderBy('full_name')
+            ->get();
 
         foreach ($employees as $employee) {
             $schedules = EmployeeSchedule::query()
                 ->where('employee_id', $employee->id)
-                ->whereBetween('work_date', [$run->cutoff_start->toDateString(), $run->cutoff_end->toDateString()])
+                ->whereBetween('work_date', [$start, $end])
                 ->orderBy('work_date')
                 ->orderBy('segment_no')
                 ->get();
-
-            if ($schedules->isEmpty()) {
-                continue;
-            }
 
             $item = PayrollItem::create([
                 'payroll_run_id' => $run->id,
@@ -67,38 +83,60 @@ class PayrollRunService
                 'night_diff' => 0,
             ];
 
-            $workingDates = $schedules->where('is_working_day', true)->groupBy(fn ($s) => $s->work_date->toDateString());
-            $presentDates = [];
+            if ($schedules->isNotEmpty()) {
+                $workingDates = $schedules
+                    ->where('is_working_day', true)
+                    ->groupBy(fn ($schedule) => $schedule->work_date->toDateString());
 
-            foreach ($schedules as $schedule) {
-                $detail = $this->calculateDetail($employee, $schedule, $settings);
+                $presentDates = [];
 
-                PayrollScheduleDetail::create([
-                    'payroll_item_id' => $item->id,
-                    ...$detail,
-                ]);
+                foreach ($schedules as $schedule) {
+                    $detail = $this->calculateDetail($employee, $schedule, $settings);
 
-                $totals['scheduled_workdays'] += $schedule->is_working_day ? 1 : 0;
-                $totals['late_minutes'] += $detail['late_minutes'];
-                $totals['undertime_minutes'] += $detail['undertime_minutes'];
-                $totals['overtime_minutes'] += $detail['overtime_minutes'];
-                $totals['night_diff_minutes'] += $detail['night_diff_minutes'];
-                $totals['overtime_pay'] += $detail['overtime_pay'];
-                $totals['night_diff'] += $detail['night_diff_pay'];
+                    PayrollScheduleDetail::create([
+                        'payroll_item_id' => $item->id,
+                        ...$detail,
+                    ]);
 
-                if ($detail['is_present']) {
-                    $presentDates[$schedule->work_date->toDateString()] = true;
+                    $totals['scheduled_workdays'] += $schedule->is_working_day ? 1 : 0;
+                    $totals['late_minutes'] += $detail['late_minutes'];
+                    $totals['undertime_minutes'] += $detail['undertime_minutes'];
+                    $totals['overtime_minutes'] += $detail['overtime_minutes'];
+                    $totals['night_diff_minutes'] += $detail['night_diff_minutes'];
+                    $totals['overtime_pay'] += $detail['overtime_pay'];
+                    $totals['night_diff'] += $detail['night_diff_pay'];
+
+                    if ($detail['is_present']) {
+                        $presentDates[$schedule->work_date->toDateString()] = true;
+                    }
                 }
+
+                $totals['present_days'] = count($presentDates);
+                $totals['absent_days'] = max(0, $workingDates->count() - $totals['present_days']);
+            } else {
+                // Without a schedule we cannot safely invent late, undertime,
+                // overtime, or schedule details. Presence/basic pay can still
+                // be calculated from complete attendance records.
+                $totals['present_days'] = Attendance::query()
+                    ->where('employee_id', $employee->id)
+                    ->whereBetween('work_date', [$start, $end])
+                    ->where('status', 'present')
+                    ->whereNotNull('time_in')
+                    ->whereNotNull('time_out')
+                    ->select('work_date')
+                    ->distinct()
+                    ->count('work_date');
             }
 
-            $totals['present_days'] = count($presentDates);
-            $totals['absent_days'] = max(0, $workingDates->count() - $totals['present_days']);
             $totals['basic_pay'] = $this->basicPay($employee, $totals['present_days'], $settings);
 
             $item->update($totals + [
                 'calculation_snapshot' => [
                     'settings' => $settings->toArray(),
                     'generated_at' => now()->toIso8601String(),
+                    'schedule_source' => $schedules->isNotEmpty()
+                        ? 'employee_schedules'
+                        : 'attendance_only',
                 ],
             ]);
         }
@@ -126,7 +164,10 @@ class PayrollRunService
 
         $actualIn = $attendance?->time_in;
         $actualOut = $attendance?->time_out;
-        $isPresent = $schedule->is_working_day && $actualIn && $actualOut && ($attendance?->status ?? 'present') === 'present';
+        $isPresent = $schedule->is_working_day
+            && $actualIn
+            && $actualOut
+            && ($attendance?->status ?? 'present') === 'present';
 
         $workedMinutes = 0;
         $lateMinutes = 0;
@@ -148,7 +189,9 @@ class PayrollRunService
 
         $hourlyRate = $this->hourlyRate($employee, $settings);
         $overtimePay = ($overtimeMinutes / 60) * $hourlyRate * (float) $settings->overtime_multiplier;
-        $nightDiffMinutes = $isPresent ? $this->nightDiffMinutes($actualIn, $actualOut, $settings) : 0;
+        $nightDiffMinutes = $isPresent
+            ? $this->nightDiffMinutes($actualIn, $actualOut, $settings)
+            : 0;
         $nightDiffPay = ($nightDiffMinutes / 60) * $hourlyRate * (float) $settings->night_diff_multiplier;
 
         return [
