@@ -38,22 +38,13 @@ class PayrollRunService
         $start = $run->cutoff_start->toDateString();
         $end = $run->cutoff_end->toDateString();
 
-        // Include employees represented by either schedules or attendance.
-        // Previously employees without schedules were silently skipped, which
-        // made a valid attendance-only cutoff generate zero payroll items.
-        $employeeIds = EmployeeSchedule::query()
-            ->whereBetween('work_date', [$start, $end])
-            ->pluck('employee_id')
-            ->merge(
-                Attendance::query()
-                    ->whereBetween('work_date', [$start, $end])
-                    ->pluck('employee_id')
-            )
-            ->unique()
-            ->values();
-
+        // A payroll run represents the employee register for the cutoff.
+        // Do not derive the employee list from schedules/attendance: an
+        // employee can legitimately have no schedule yet, can have an
+        // attendance-only record, or can be absent for the entire cutoff.
+        // The V1 implementation starts from all employees and then matches
+        // schedules/attendance to each employee.
         $employees = Employee::query()
-            ->whereIn('id', $employeeIds)
             ->orderBy('full_name')
             ->get();
 
@@ -114,9 +105,9 @@ class PayrollRunService
                 $totals['present_days'] = count($presentDates);
                 $totals['absent_days'] = max(0, $workingDates->count() - $totals['present_days']);
             } else {
-                // Without a schedule we cannot safely invent late, undertime,
-                // overtime, or schedule details. Presence/basic pay can still
-                // be calculated from complete attendance records.
+                // Attendance-only employees still receive a payroll item.
+                // We intentionally do not invent schedule-based OT/late/
+                // undertime details when there is no schedule to compare to.
                 $totals['present_days'] = Attendance::query()
                     ->where('employee_id', $employee->id)
                     ->whereBetween('work_date', [$start, $end])
