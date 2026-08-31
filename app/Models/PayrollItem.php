@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+use App\Models\PayrollRun;
+use App\Models\Employee;
+use App\Models\PayrollScheduleDetail;
+
 class PayrollItem extends Model
 {
     use HasFactory;
@@ -48,13 +52,19 @@ class PayrollItem extends Model
     ];
 
     protected $casts = [
-        'scheduled_workdays' => 'decimal:2',
-        'present_days' => 'decimal:2',
+        'scheduled_workdays' => 'integer',
+        'present_days' => 'integer',
         'absent_days' => 'decimal:2',
         'leave_days' => 'decimal:2',
         'paid_leave_days' => 'decimal:2',
         'unpaid_leave_days' => 'decimal:2',
         'holiday_days' => 'decimal:2',
+
+        'late_minutes' => 'integer',
+        'undertime_minutes' => 'integer',
+        'overtime_minutes' => 'integer',
+        'night_diff_minutes' => 'integer',
+
         'basic_pay' => 'decimal:2',
         'overtime_pay' => 'decimal:2',
         'holiday_pay' => 'decimal:2',
