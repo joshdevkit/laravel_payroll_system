@@ -10,6 +10,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollScheduleDetail;
 use App\Models\PayrollSetting;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 class PayrollRunService
@@ -116,7 +117,7 @@ class PayrollRunService
             if ($schedules->isNotEmpty()) {
                 $workingDates = $schedules
                     ->where('is_working_day', true)
-                    ->groupBy(fn ($schedule) => Carbon::parse($schedule->work_date)->toDateString());
+                    ->groupBy(fn($schedule) => Carbon::parse($schedule->work_date)->toDateString());
 
                 $presentDates = [];
 
@@ -174,8 +175,8 @@ class PayrollRunService
     private function calculateDetail(Employee $employee, EmployeeSchedule $schedule, PayrollSetting $settings): array
     {
         $date = Carbon::parse($schedule->work_date)->toDateString();
-        $scheduledStart = Carbon::parse($date.' '.$schedule->start_time);
-        $scheduledEnd = Carbon::parse($date.' '.$schedule->end_time);
+        $scheduledStart = Carbon::parse($date . ' ' . $schedule->start_time);
+        $scheduledEnd = Carbon::parse($date . ' ' . $schedule->end_time);
 
         if ($scheduledEnd->lessThanOrEqualTo($scheduledStart)) {
             $scheduledEnd->addDay();
@@ -260,24 +261,64 @@ class PayrollRunService
         return $dailyRate / max(0.01, (float) $settings->daily_work_hours);
     }
 
-    private function nightDiffMinutes(?Carbon $actualIn, ?Carbon $actualOut, PayrollSetting $settings): int
-    {
-        if (! $settings->night_diff_enabled || ! $actualIn || ! $actualOut) {
+    private function nightDiffMinutes(
+        ?CarbonInterface $actualIn,
+        ?CarbonInterface $actualOut,
+        PayrollSetting $settings
+    ): int {
+        if (
+            ! $settings->night_diff_enabled ||
+            ! $actualIn ||
+            ! $actualOut ||
+            $actualOut->lessThanOrEqualTo($actualIn)
+        ) {
             return 0;
         }
 
-        $minutes = 0;
-        $cursor = $actualIn->copy()->startOfMinute();
+        $start = $actualIn->copy()->startOfMinute();
         $end = $actualOut->copy()->startOfMinute();
 
-        while ($cursor->lt($end)) {
-            $hour = (int) $cursor->format('H');
-            if ($hour >= 22 || $hour < 6) {
-                $minutes++;
+        $total = 0;
+
+        // Check the night period belonging to the start date
+        $nightStart = $start->copy()->startOfDay()->setTime(22, 0);
+        $nightEnd = $nightStart->copy()->addHours(8);
+
+        if ($end->greaterThan($nightStart) && $start->lessThan($nightEnd)) {
+            $overlapStart = $start->greaterThan($nightStart)
+                ? $start
+                : $nightStart;
+
+            $overlapEnd = $end->lessThan($nightEnd)
+                ? $end
+                : $nightEnd;
+
+            if ($overlapEnd->greaterThan($overlapStart)) {
+                $total += $overlapStart->diffInMinutes($overlapEnd);
             }
-            $cursor->addMinute();
         }
 
-        return $minutes;
+        // Check subsequent night periods until the attendance ends.
+        $nightStart = $nightStart->copy()->addDay();
+
+        while ($nightStart->lessThan($end)) {
+            $nightEnd = $nightStart->copy()->addHours(8);
+
+            $overlapStart = $start->greaterThan($nightStart)
+                ? $start
+                : $nightStart;
+
+            $overlapEnd = $end->lessThan($nightEnd)
+                ? $end
+                : $nightEnd;
+
+            if ($overlapEnd->greaterThan($overlapStart)) {
+                $total += $overlapStart->diffInMinutes($overlapEnd);
+            }
+
+            $nightStart->addDay();
+        }
+
+        return $total;
     }
 }
