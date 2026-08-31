@@ -1,0 +1,213 @@
+<?php
+
+namespace App\Services\Payroll;
+
+use App\Models\Attendance;
+use App\Models\Employee;
+use App\Models\EmployeeSchedule;
+use App\Models\PayrollItem;
+use App\Models\PayrollRun;
+use App\Models\PayrollScheduleDetail;
+use App\Models\PayrollSetting;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
+class PayrollRunService
+{
+    public function createDraft(string $cutoffStart, string $cutoffEnd, string $payDate): PayrollRun
+    {
+        return DB::transaction(function () use ($cutoffStart, $cutoffEnd, $payDate) {
+            $settings = PayrollSetting::query()->findOrFail(1);
+
+            $run = PayrollRun::create([
+                'cutoff_start' => $cutoffStart,
+                'cutoff_end' => $cutoffEnd,
+                'pay_date' => $payDate,
+                'status' => 'draft',
+                'settings_snapshot' => $settings->toArray(),
+            ]);
+
+            $this->buildItems($run, $settings);
+
+            return $run->load(['items.employee', 'items.scheduleDetails']);
+        });
+    }
+
+    private function buildItems(PayrollRun $run, PayrollSetting $settings): void
+    {
+        $employees = Employee::query()->orderBy('full_name')->get();
+
+        foreach ($employees as $employee) {
+            $schedules = EmployeeSchedule::query()
+                ->where('employee_id', $employee->id)
+                ->whereBetween('work_date', [$run->cutoff_start->toDateString(), $run->cutoff_end->toDateString()])
+                ->orderBy('work_date')
+                ->orderBy('segment_no')
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                continue;
+            }
+
+            $item = PayrollItem::create([
+                'payroll_run_id' => $run->id,
+                'employee_id' => $employee->id,
+            ]);
+
+            $totals = [
+                'scheduled_workdays' => 0,
+                'present_days' => 0,
+                'absent_days' => 0,
+                'late_minutes' => 0,
+                'undertime_minutes' => 0,
+                'overtime_minutes' => 0,
+                'night_diff_minutes' => 0,
+                'basic_pay' => 0,
+                'overtime_pay' => 0,
+                'night_diff' => 0,
+            ];
+
+            $workingDates = $schedules->where('is_working_day', true)->groupBy(fn ($s) => $s->work_date->toDateString());
+            $presentDates = [];
+
+            foreach ($schedules as $schedule) {
+                $detail = $this->calculateDetail($employee, $schedule, $settings);
+
+                PayrollScheduleDetail::create([
+                    'payroll_item_id' => $item->id,
+                    ...$detail,
+                ]);
+
+                $totals['scheduled_workdays'] += $schedule->is_working_day ? 1 : 0;
+                $totals['late_minutes'] += $detail['late_minutes'];
+                $totals['undertime_minutes'] += $detail['undertime_minutes'];
+                $totals['overtime_minutes'] += $detail['overtime_minutes'];
+                $totals['night_diff_minutes'] += $detail['night_diff_minutes'];
+                $totals['overtime_pay'] += $detail['overtime_pay'];
+                $totals['night_diff'] += $detail['night_diff_pay'];
+
+                if ($detail['is_present']) {
+                    $presentDates[$schedule->work_date->toDateString()] = true;
+                }
+            }
+
+            $totals['present_days'] = count($presentDates);
+            $totals['absent_days'] = max(0, $workingDates->count() - $totals['present_days']);
+            $totals['basic_pay'] = $this->basicPay($employee, $totals['present_days'], $settings);
+
+            $item->update($totals + [
+                'calculation_snapshot' => [
+                    'settings' => $settings->toArray(),
+                    'generated_at' => now()->toIso8601String(),
+                ],
+            ]);
+        }
+    }
+
+    private function calculateDetail(Employee $employee, EmployeeSchedule $schedule, PayrollSetting $settings): array
+    {
+        $date = $schedule->work_date->toDateString();
+        $scheduledStart = Carbon::parse($date.' '.$schedule->start_time);
+        $scheduledEnd = Carbon::parse($date.' '.$schedule->end_time);
+
+        if ($scheduledEnd->lessThanOrEqualTo($scheduledStart)) {
+            $scheduledEnd->addDay();
+        }
+
+        $scheduledMinutes = $schedule->is_working_day
+            ? max(0, $scheduledStart->diffInMinutes($scheduledEnd) - $schedule->break_minutes)
+            : 0;
+
+        $attendance = Attendance::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('work_date', $date)
+            ->where('segment_no', $schedule->segment_no)
+            ->first();
+
+        $actualIn = $attendance?->time_in;
+        $actualOut = $attendance?->time_out;
+        $isPresent = $schedule->is_working_day && $actualIn && $actualOut && ($attendance?->status ?? 'present') === 'present';
+
+        $workedMinutes = 0;
+        $lateMinutes = 0;
+        $undertimeMinutes = 0;
+        $overtimeMinutes = 0;
+
+        if ($isPresent) {
+            $workedMinutes = max(0, $actualIn->diffInMinutes($actualOut) - $schedule->break_minutes);
+            $lateMinutes = $settings->late_enabled
+                ? max(0, $scheduledStart->diffInMinutes($actualIn) - $settings->late_grace_minutes)
+                : 0;
+            $undertimeMinutes = $settings->undertime_enabled
+                ? max(0, $scheduledMinutes - $workedMinutes)
+                : 0;
+            $overtimeMinutes = $settings->overtime_enabled
+                ? max(0, $workedMinutes - $scheduledMinutes - $settings->overtime_threshold_minutes)
+                : 0;
+        }
+
+        $hourlyRate = $this->hourlyRate($employee, $settings);
+        $overtimePay = ($overtimeMinutes / 60) * $hourlyRate * (float) $settings->overtime_multiplier;
+        $nightDiffMinutes = $isPresent ? $this->nightDiffMinutes($actualIn, $actualOut, $settings) : 0;
+        $nightDiffPay = ($nightDiffMinutes / 60) * $hourlyRate * (float) $settings->night_diff_multiplier;
+
+        return [
+            'work_date' => $date,
+            'segment_no' => $schedule->segment_no,
+            'scheduled_start' => $scheduledStart,
+            'scheduled_end' => $scheduledEnd,
+            'actual_in' => $actualIn,
+            'actual_out' => $actualOut,
+            'scheduled_minutes' => $scheduledMinutes,
+            'break_minutes' => $schedule->break_minutes,
+            'worked_minutes' => $workedMinutes,
+            'late_minutes' => $lateMinutes,
+            'undertime_minutes' => $undertimeMinutes,
+            'overtime_minutes' => $overtimeMinutes,
+            'night_diff_minutes' => $nightDiffMinutes,
+            'is_present' => $isPresent,
+            'overtime_pay' => round($overtimePay, 2),
+            'night_diff_pay' => round($nightDiffPay, 2),
+            'calculation_notes' => null,
+        ];
+    }
+
+    private function basicPay(Employee $employee, int $presentDays, PayrollSetting $settings): float
+    {
+        if ($employee->rate_type === 'monthly') {
+            return round(($presentDays * (float) $employee->basic_rate) / max(1, (float) $settings->monthly_daily_rate_divisor), 2);
+        }
+
+        return round($presentDays * (float) $employee->daily_rate, 2);
+    }
+
+    private function hourlyRate(Employee $employee, PayrollSetting $settings): float
+    {
+        $dailyRate = $employee->rate_type === 'monthly'
+            ? (float) $employee->basic_rate / max(1, (float) $settings->monthly_daily_rate_divisor)
+            : (float) $employee->daily_rate;
+
+        return $dailyRate / max(0.01, (float) $settings->daily_work_hours);
+    }
+
+    private function nightDiffMinutes(?Carbon $actualIn, ?Carbon $actualOut, PayrollSetting $settings): int
+    {
+        if (! $settings->night_diff_enabled || ! $actualIn || ! $actualOut) {
+            return 0;
+        }
+
+        $minutes = 0;
+        $cursor = $actualIn->copy()->startOfMinute();
+        $end = $actualOut->copy()->startOfMinute();
+
+        while ($cursor->lt($end)) {
+            $hour = (int) $cursor->format('H');
+            if ($hour >= 22 || $hour < 6) {
+                $minutes++;
+            }
+            $cursor->addMinute();
+        }
+
+        return $minutes;
+    }
+}
