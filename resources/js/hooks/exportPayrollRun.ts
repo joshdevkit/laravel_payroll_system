@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import type { PayrollItem, PayrollRun } from '@/components/payroll-run/types';
 import { num, totalDeductions, totalEarnings } from '@/components/payroll-run/payrollRunUtils';
 
