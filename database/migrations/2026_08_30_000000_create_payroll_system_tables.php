@@ -34,9 +34,7 @@ return new class extends Migration
 
         Schema::create('employee_schedules', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('employee_id')
-                ->constrained('employees')
-                ->cascadeOnDelete();
+            $table->foreignUuid('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->date('work_date');
             $table->unsignedInteger('segment_no')->default(1);
             $table->time('start_time');
@@ -45,7 +43,6 @@ return new class extends Migration
             $table->boolean('is_working_day')->default(true);
             $table->text('notes')->nullable();
             $table->timestamps();
-
             $table->unique(['employee_id', 'work_date', 'segment_no']);
             $table->index('work_date', 'employee_schedules_date_idx');
             $table->index(['employee_id', 'work_date'], 'employee_schedules_employee_date_idx');
@@ -53,9 +50,7 @@ return new class extends Migration
 
         Schema::create('attendance', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('employee_id')
-                ->constrained('employees')
-                ->cascadeOnDelete();
+            $table->foreignUuid('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->date('work_date');
             $table->unsignedInteger('segment_no')->default(1);
             $table->dateTime('time_in')->nullable();
@@ -64,11 +59,7 @@ return new class extends Migration
             $table->string('source')->default('manual');
             $table->text('notes')->nullable();
             $table->timestamps();
-
-            $table->unique(
-                ['employee_id', 'work_date', 'segment_no'],
-                'attendance_employee_work_date_segment_unique'
-            );
+            $table->unique(['employee_id', 'work_date', 'segment_no'], 'attendance_employee_work_date_segment_unique');
             $table->index(['employee_id', 'work_date'], 'attendance_employee_date_idx');
             $table->index('work_date', 'attendance_date_idx');
         });
@@ -82,22 +73,14 @@ return new class extends Migration
 
         Schema::create('leave_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('employee_id')
-                ->constrained('employees')
-                ->cascadeOnDelete();
-            $table->foreignUuid('leave_type_id')
-                ->constrained('leave_types')
-                ->restrictOnDelete();
+            $table->foreignUuid('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->foreignUuid('leave_type_id')->constrained('leave_types')->restrictOnDelete();
             $table->date('start_date');
             $table->date('end_date');
             $table->string('status')->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
-
-            $table->index(
-                ['employee_id', 'start_date', 'end_date'],
-                'leave_requests_employee_dates_idx'
-            );
+            $table->index(['employee_id', 'start_date', 'end_date'], 'leave_requests_employee_dates_idx');
         });
 
         Schema::create('holidays', function (Blueprint $table) {
@@ -115,7 +98,8 @@ return new class extends Migration
             $table->boolean('undertime_enabled')->default(true);
             $table->boolean('overtime_enabled')->default(true);
             $table->decimal('overtime_multiplier', 10, 2)->default(1.25);
-            $table->unsignedInteger('overtime_threshold_minutes')->default(0);
+            // V1 payroll behavior qualifies OT only after one hour.
+            $table->unsignedInteger('overtime_threshold_minutes')->default(60);
             $table->unsignedInteger('late_grace_minutes')->default(0);
             $table->unsignedInteger('unpaid_break_minutes')->default(60);
             $table->boolean('night_diff_enabled')->default(true);
@@ -140,7 +124,7 @@ return new class extends Migration
             'undertime_enabled' => true,
             'overtime_enabled' => true,
             'overtime_multiplier' => 1.25,
-            'overtime_threshold_minutes' => 0,
+            'overtime_threshold_minutes' => 60,
             'late_grace_minutes' => 0,
             'unpaid_break_minutes' => 60,
             'night_diff_enabled' => true,
@@ -173,12 +157,8 @@ return new class extends Migration
 
         Schema::create('payroll_items', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('payroll_run_id')
-                ->constrained('payroll_runs')
-                ->cascadeOnDelete();
-            $table->foreignUuid('employee_id')
-                ->constrained('employees')
-                ->restrictOnDelete();
+            $table->foreignUuid('payroll_run_id')->constrained('payroll_runs')->cascadeOnDelete();
+            $table->foreignUuid('employee_id')->constrained('employees')->restrictOnDelete();
             $table->decimal('scheduled_workdays', 14, 2)->default(0);
             $table->decimal('present_days', 14, 2)->default(0);
             $table->decimal('absent_days', 14, 2)->default(0);
@@ -202,12 +182,9 @@ return new class extends Migration
             $table->decimal('tax_deduction', 14, 2)->default(0);
             $table->decimal('leave_deduction', 14, 2)->default(0);
             $table->decimal('other_deductions', 14, 2)->default(0);
-            $table->decimal('total_earnings', 14, 2)
-                ->storedAs('(basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus)');
-            $table->decimal('total_deductions', 14, 2)
-                ->storedAs('(sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions)');
-            $table->decimal('net_pay', 14, 2)
-                ->storedAs('((basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus) - (sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions))');
+            $table->decimal('total_earnings', 14, 2)->storedAs('(basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus)');
+            $table->decimal('total_deductions', 14, 2)->storedAs('(sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions)');
+            $table->decimal('net_pay', 14, 2)->storedAs('((basic_pay + overtime_pay + holiday_pay + night_diff + leave_pay + bonus) - (sss_deduction + philhealth_deduction + pagibig_deduction + tax_deduction + leave_deduction + other_deductions))');
             $table->json('calculation_snapshot')->nullable();
             $table->timestamps();
             $table->unique(['payroll_run_id', 'employee_id']);
@@ -216,9 +193,7 @@ return new class extends Migration
 
         Schema::create('payroll_schedule_details', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('payroll_item_id')
-                ->constrained('payroll_items')
-                ->cascadeOnDelete();
+            $table->foreignUuid('payroll_item_id')->constrained('payroll_items')->cascadeOnDelete();
             $table->date('work_date');
             $table->unsignedInteger('segment_no');
             $table->dateTime('scheduled_start');
@@ -237,10 +212,7 @@ return new class extends Migration
             $table->decimal('night_diff_pay', 12, 2)->default(0);
             $table->text('calculation_notes')->nullable();
             $table->timestamp('created_at')->useCurrent();
-            $table->unique(
-                ['payroll_item_id', 'work_date', 'segment_no'],
-                'payroll_schedule_details_item_date_segment_key'
-            );
+            $table->unique(['payroll_item_id', 'work_date', 'segment_no'], 'payroll_schedule_details_item_date_segment_key');
             $table->index('payroll_item_id', 'idx_payroll_schedule_details_item');
             $table->index('work_date', 'idx_payroll_schedule_details_date');
         });
