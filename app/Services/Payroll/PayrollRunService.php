@@ -145,6 +145,7 @@ class PayrollRunService
         $scheduledDates = [];
 
         $regularPaidMinutes = 0;
+        $presentSegments = 0;
         $lateMinutes = 0;
         $undertimeMinutes = 0;
         $overtimeMinutes = 0;
@@ -240,6 +241,7 @@ class PayrollRunService
             }
 
             $usedAttendance[$record->id] = true;
+            $presentSegments++;
 
             $workedMinutes = $this->overlap(
                 $actual['from'],
@@ -331,9 +333,13 @@ class PayrollRunService
         $presentDays = count($presentDates);
         $dailyWorkMinutes = max(0, (float) $settings->daily_work_hours * 60);
 
-        $basicPay = $dailyWorkMinutes > 0
-            ? ($regularPaidMinutes / $dailyWorkMinutes) * $rate
-            : 0;
+        // A present schedule segment earns one daily-rate equivalent.
+        // This is important for split shifts: an employee working both
+        // 8 AM-5 PM and 7 PM-3 AM earns two daily-rate equivalents (₱1,000
+        // at a ₱500 daily rate). Breaks remain excluded from worked/NSD
+        // minutes and do not reduce the daily-rate equivalent of a present
+        // scheduled segment.
+        $basicPay = $presentSegments * $rate;
 
         $absentDays = count(array_diff_key($scheduledDates, $presentDates));
 
