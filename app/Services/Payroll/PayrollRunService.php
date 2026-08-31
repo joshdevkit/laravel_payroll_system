@@ -35,12 +35,20 @@ class PayrollRunService
     }
 
     /**
-     * Ensure an existing draft has payroll items. This also repairs draft
-     * runs created before item generation was fixed.
+     * Ensure an existing draft contains an item for every employee.
+     * This also repairs drafts created before payroll item generation was fixed.
      */
     public function ensureItems(PayrollRun $run): PayrollRun
     {
-        if ($run->status !== 'draft' || $run->items()->exists()) {
+        if ($run->status !== 'draft') {
+            return $run->load(['items.employee', 'items.scheduleDetails']);
+        }
+
+        $employeeIds = Employee::query()->pluck('id');
+        $existingEmployeeIds = $run->items()->pluck('employee_id');
+        $missingEmployees = $employeeIds->diff($existingEmployeeIds);
+
+        if ($missingEmployees->isEmpty()) {
             return $run->load(['items.employee', 'items.scheduleDetails']);
         }
 
@@ -117,7 +125,7 @@ class PayrollRunService
             if ($schedules->isNotEmpty()) {
                 $workingDates = $schedules
                     ->where('is_working_day', true)
-                    ->groupBy(fn($schedule) => Carbon::parse($schedule->work_date)->toDateString());
+                    ->groupBy(fn ($schedule) => Carbon::parse($schedule->work_date)->toDateString());
 
                 $presentDates = [];
 
@@ -280,37 +288,25 @@ class PayrollRunService
 
         $total = 0;
 
-        // Check the night period belonging to the start date
         $nightStart = $start->copy()->startOfDay()->setTime(22, 0);
         $nightEnd = $nightStart->copy()->addHours(8);
 
         if ($end->greaterThan($nightStart) && $start->lessThan($nightEnd)) {
-            $overlapStart = $start->greaterThan($nightStart)
-                ? $start
-                : $nightStart;
-
-            $overlapEnd = $end->lessThan($nightEnd)
-                ? $end
-                : $nightEnd;
+            $overlapStart = $start->greaterThan($nightStart) ? $start : $nightStart;
+            $overlapEnd = $end->lessThan($nightEnd) ? $end : $nightEnd;
 
             if ($overlapEnd->greaterThan($overlapStart)) {
                 $total += $overlapStart->diffInMinutes($overlapEnd);
             }
         }
 
-        // Check subsequent night periods until the attendance ends.
         $nightStart = $nightStart->copy()->addDay();
 
         while ($nightStart->lessThan($end)) {
             $nightEnd = $nightStart->copy()->addHours(8);
 
-            $overlapStart = $start->greaterThan($nightStart)
-                ? $start
-                : $nightStart;
-
-            $overlapEnd = $end->lessThan($nightEnd)
-                ? $end
-                : $nightEnd;
+            $overlapStart = $start->greaterThan($nightStart) ? $start : $nightStart;
+            $overlapEnd = $end->lessThan($nightEnd) ? $end : $nightEnd;
 
             if ($overlapEnd->greaterThan($overlapStart)) {
                 $total += $overlapStart->diffInMinutes($overlapEnd);
