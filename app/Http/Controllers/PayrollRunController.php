@@ -29,16 +29,24 @@ class PayrollRunController extends Controller
             'pay_date' => ['required', 'date'],
         ]);
 
-        $service->createDraft($validated['cutoff_start'], $validated['cutoff_end'], $validated['pay_date']);
+        $service->createDraft(
+            $validated['cutoff_start'],
+            $validated['cutoff_end'],
+            $validated['pay_date'],
+        );
 
         return back()->with('success', 'Payroll run created successfully.');
     }
 
-    public function show(PayrollRun $payrollRun): Response
+    public function show(PayrollRun $payrollRun, PayrollRunService $service): Response
     {
-        $payrollRun->load(['items.employee', 'items.scheduleDetails']);
+        // Older draft runs may have been created before payroll-item
+        // generation was fixed. Repair those runs before rendering review.
+        $payrollRun = $service->ensureItems($payrollRun);
 
-        return inertia('PayrollRuns/Show', ['payrollRun' => $payrollRun]);
+        return inertia('PayrollRuns/Show', [
+            'payrollRun' => $payrollRun,
+        ]);
     }
 
     public function confirm(PayrollRun $payrollRun): RedirectResponse
