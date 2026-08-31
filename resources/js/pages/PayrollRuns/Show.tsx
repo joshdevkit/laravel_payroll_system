@@ -7,9 +7,8 @@ import { PayrollRegisterTable } from '@/components/payroll-run/PayrollRegisterTa
 import { PayrollItemMobileCard } from '@/components/payroll-run/PayrollRegisterTable';
 import { FlashMessage } from '@/components/layout/FlashMessage';
 import type { PayrollRun } from '@/components/payroll-run/types';
-
-const formatDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
-const statusClass: Record<string, string> = { draft: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400', completed: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400' };
+import { formatDate, statusClass } from '@/components/payroll-run/payrollRunUtils';
+import { exportPayrollRunToExcel } from '@/hooks/exportPayrollRun';
 
 export default function Show({ payrollRun }: { payrollRun: PayrollRun }) {
     const [confirming, setConfirming] = useState(false);
@@ -22,15 +21,6 @@ export default function Show({ payrollRun }: { payrollRun: PayrollRun }) {
         return () => { document.body.style.overflow = previous; document.removeEventListener('keydown', escape); };
     }, []);
 
-    const exportPayroll = () => {
-        const rows = [['Employee ID','Employee','Scheduled','Present','Absent','Leave','Late Minutes','Undertime Minutes','OT Minutes','ND Minutes','Basic Pay','OT Pay','Holiday Pay','Night Diff','Leave Pay','Bonus','Total Earnings','Total Deductions','Net Pay']];
-        payrollRun.items.forEach((item) => rows.push([item.employee.employee_id, item.employee.full_name, String(item.scheduled_workdays), String(item.present_days), String(item.absent_days), String(item.leave_days ?? 0), String(item.late_minutes), String(item.undertime_minutes), String(item.overtime_minutes), String(item.night_diff_minutes), String(item.basic_pay), String(item.overtime_pay), String(item.holiday_pay ?? 0), String(item.night_diff), String(item.leave_pay ?? 0), String(item.bonus ?? 0), String(item.total_earnings), String(item.total_deductions), String(item.net_pay)]));
-        const csv = rows.map((row) => row.map((value) => `"${value.replaceAll('"', '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob); const link = document.createElement('a');
-        link.href = url; link.download = `payroll-${payrollRun.cutoff_start}-${payrollRun.cutoff_end}.csv`; link.click(); URL.revokeObjectURL(url);
-    };
-
     const confirmPayroll = () => {
         if (payrollRun.status !== 'draft') return;
         setConfirming(true);
@@ -41,17 +31,17 @@ export default function Show({ payrollRun }: { payrollRun: PayrollRun }) {
         <FlashMessage />
         <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6 sm:py-5">
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold sm:text-lg">Review Payroll</h2><Badge variant="outline" className={statusClass[payrollRun.status] ?? ''}>{payrollRun.status}</Badge></div><p className="mt-1 text-xs text-muted-foreground sm:text-sm">{formatDate(payrollRun.cutoff_start)} – {formatDate(payrollRun.cutoff_end)} · Pay date {formatDate(payrollRun.pay_date)}</p><p className="mt-1 text-[11px] text-muted-foreground">Payroll uses each employee's date-specific schedule. Overnight attendance remains attached to the date the shift started.</p></div>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-semibold sm:text-lg">Review Payroll</h2><Badge variant="outline" className={statusClass[payrollRun.status] ?? ''}>{payrollRun.status}</Badge></div><p className="mt-1 text-xs text-muted-foreground sm:text-sm">{formatDate(payrollRun.cutoff_start)} – {formatDate(payrollRun.cutoff_end)} · Pay date {formatDate(payrollRun.pay_date)}</p><p className="mt-1 text-[11px] text-muted-foreground">Payroll uses each employee&apos;s date-specific schedule. Overnight attendance remains attached to the date the shift started.</p></div>
                 <Button variant="ghost" size="sm" className="shrink-0" onClick={() => window.history.back()} aria-label="Close review"><X className="h-5 w-5" /></Button>
             </div>
-
-            <div className="min-h-0 flex-1 overflow-auto px-4 py-4 sm:hidden"><div className="space-y-2">{payrollRun.items.map((item) => <PayrollItemMobileCard key={item.id} item={item} leavePayEnabled />)}</div></div>
-            <div className="mt-3 hidden min-h-0 flex-1 overflow-auto px-6 py-4 sm:block"><PayrollRegisterTable items={payrollRun.items} /></div>
-            <p className="shrink-0 px-4 pb-3 text-xs text-muted-foreground sm:px-6">Clock-in/out timestamps may differ from the scheduled time. Actual timestamps are used for late, undertime, overtime, and night differential, while overnight attendance stays on its shift-start date.<br /><span className="font-semibold text-red-600 dark:text-red-400">Tip: you can use (esc) key to close this preview. — Click the name to check attendance details.</span></p>
+            {payrollRun.items.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">No payroll items were generated for this run.</div> : <>
+                <div className="min-h-0 flex-1 overflow-auto px-4 py-4 sm:hidden"><div className="space-y-2">{payrollRun.items.map(item => <PayrollItemMobileCard key={item.id} item={item} leavePayEnabled />)}</div></div>
+                <div className="mt-3 hidden min-h-0 flex-1 overflow-auto px-6 py-4 sm:block"><PayrollRegisterTable items={payrollRun.items} /></div>
+                <p className="shrink-0 px-4 pb-3 text-xs text-muted-foreground sm:px-6">Clock-in/out timestamps may differ from the scheduled time. Actual timestamps are used for late, undertime, overtime, and night differential, while overnight attendance stays on its shift-start date.<br /><span className="font-semibold text-red-600 dark:text-red-400">Tip: you can use (esc) key to close this preview. — Click the name to check attendance details.</span></p>
+            </>}
         </div>
-
         <div className="shrink-0 border-t bg-background px-4 py-3 sm:px-6 sm:py-4"><div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {payrollRun.status === 'draft' ? <><Button variant="outline" onClick={exportPayroll} disabled={!payrollRun.items.length}><Download className="mr-2 h-4 w-4" />Export to Excel</Button><Button variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button><Button className="w-full sm:w-auto" onClick={confirmPayroll} disabled={confirming || payrollRun.items.length === 0}>{confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Payroll</Button></> : <Button className="w-full sm:w-auto" onClick={() => window.history.back()}>Close</Button>}
+            {payrollRun.status === 'draft' ? <><Button variant="outline" onClick={() => exportPayrollRunToExcel(payrollRun, payrollRun.items)} disabled={!payrollRun.items.length}><Download className="mr-2 h-4 w-4" />Export to Excel</Button><Button variant="outline" className="w-full sm:w-auto" onClick={() => window.history.back()}><ArrowLeft className="mr-2 h-4 w-4" />Back</Button><Button className="w-full sm:w-auto" onClick={confirmPayroll} disabled={confirming || payrollRun.items.length === 0}>{confirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Payroll</Button></> : <Button className="w-full sm:w-auto" onClick={() => window.history.back()}>Close</Button>}
         </div></div>
     </div>;
 }
