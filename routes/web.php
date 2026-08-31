@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\SchedulingController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/scheduling/bulk', [SchedulingController::class, 'bulkStore'])->name('schedules.bulk-store');
     Route::put('/scheduling/{schedule}', [SchedulingController::class, 'update'])->name('schedules.update');
     Route::delete('/scheduling/{schedule}', [SchedulingController::class, 'destroy'])->name('schedules.destroy');
+
+    Route::get('/payroll', [PayrollRunController::class, 'index'])->name('payroll.index');
+    Route::post('/payroll', [PayrollRunController::class, 'store'])->name('payroll.store');
+    Route::get('/payroll/{payrollRun}', [PayrollRunController::class, 'show'])->name('payroll.show');
+    Route::delete('/payroll/{payrollRun}', [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
 
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
