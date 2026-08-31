@@ -33,17 +33,29 @@ class PayrollRunService
         });
     }
 
+    /**
+     * Ensure an existing draft has payroll items. This also repairs draft
+     * runs created before item generation was fixed.
+     */
+    public function ensureItems(PayrollRun $run): PayrollRun
+    {
+        if ($run->status !== 'draft' || $run->items()->exists()) {
+            return $run->load(['items.employee', 'items.scheduleDetails']);
+        }
+
+        return DB::transaction(function () use ($run) {
+            $settings = PayrollSetting::query()->findOrFail(1);
+            $this->buildItems($run, $settings);
+
+            return $run->fresh(['items.employee', 'items.scheduleDetails']);
+        });
+    }
+
     private function buildItems(PayrollRun $run, PayrollSetting $settings): void
     {
-        $start = $run->cutoff_start->toDateString();
-        $end = $run->cutoff_end->toDateString();
+        $start = Carbon::parse($run->cutoff_start)->toDateString();
+        $end = Carbon::parse($run->cutoff_end)->toDateString();
 
-        // A payroll run represents the employee register for the cutoff.
-        // Do not derive the employee list from schedules/attendance: an
-        // employee can legitimately have no schedule yet, can have an
-        // attendance-only record, or can be absent for the entire cutoff.
-        // The V1 implementation starts from all employees and then matches
-        // schedules/attendance to each employee.
         $employees = Employee::query()
             ->orderBy('full_name')
             ->get();
@@ -56,10 +68,37 @@ class PayrollRunService
                 ->orderBy('segment_no')
                 ->get();
 
-            $item = PayrollItem::create([
-                'payroll_run_id' => $run->id,
-                'employee_id' => $employee->id,
-            ]);
+            $item = PayrollItem::firstOrCreate(
+                [
+                    'payroll_run_id' => $run->id,
+                    'employee_id' => $employee->id,
+                ],
+                [
+                    'scheduled_workdays' => 0,
+                    'present_days' => 0,
+                    'absent_days' => 0,
+                    'leave_days' => 0,
+                    'paid_leave_days' => 0,
+                    'unpaid_leave_days' => 0,
+                    'holiday_days' => 0,
+                    'late_minutes' => 0,
+                    'undertime_minutes' => 0,
+                    'overtime_minutes' => 0,
+                    'night_diff_minutes' => 0,
+                    'basic_pay' => 0,
+                    'overtime_pay' => 0,
+                    'holiday_pay' => 0,
+                    'night_diff' => 0,
+                    'leave_pay' => 0,
+                    'bonus' => 0,
+                    'sss_deduction' => 0,
+                    'philhealth_deduction' => 0,
+                    'pagibig_deduction' => 0,
+                    'tax_deduction' => 0,
+                    'leave_deduction' => 0,
+                    'other_deductions' => 0,
+                ],
+            );
 
             $totals = [
                 'scheduled_workdays' => 0,
@@ -77,17 +116,21 @@ class PayrollRunService
             if ($schedules->isNotEmpty()) {
                 $workingDates = $schedules
                     ->where('is_working_day', true)
-                    ->groupBy(fn ($schedule) => $schedule->work_date->toDateString());
+                    ->groupBy(fn ($schedule) => Carbon::parse($schedule->work_date)->toDateString());
 
                 $presentDates = [];
 
                 foreach ($schedules as $schedule) {
                     $detail = $this->calculateDetail($employee, $schedule, $settings);
 
-                    PayrollScheduleDetail::create([
-                        'payroll_item_id' => $item->id,
-                        ...$detail,
-                    ]);
+                    PayrollScheduleDetail::updateOrCreate(
+                        [
+                            'payroll_item_id' => $item->id,
+                            'work_date' => $detail['work_date'],
+                            'segment_no' => $detail['segment_no'],
+                        ],
+                        $detail,
+                    );
 
                     $totals['scheduled_workdays'] += $schedule->is_working_day ? 1 : 0;
                     $totals['late_minutes'] += $detail['late_minutes'];
@@ -98,16 +141,13 @@ class PayrollRunService
                     $totals['night_diff'] += $detail['night_diff_pay'];
 
                     if ($detail['is_present']) {
-                        $presentDates[$schedule->work_date->toDateString()] = true;
+                        $presentDates[$detail['work_date']] = true;
                     }
                 }
 
                 $totals['present_days'] = count($presentDates);
                 $totals['absent_days'] = max(0, $workingDates->count() - $totals['present_days']);
             } else {
-                // Attendance-only employees still receive a payroll item.
-                // We intentionally do not invent schedule-based OT/late/
-                // undertime details when there is no schedule to compare to.
                 $totals['present_days'] = Attendance::query()
                     ->where('employee_id', $employee->id)
                     ->whereBetween('work_date', [$start, $end])
@@ -125,9 +165,7 @@ class PayrollRunService
                 'calculation_snapshot' => [
                     'settings' => $settings->toArray(),
                     'generated_at' => now()->toIso8601String(),
-                    'schedule_source' => $schedules->isNotEmpty()
-                        ? 'employee_schedules'
-                        : 'attendance_only',
+                    'schedule_source' => $schedules->isNotEmpty() ? 'employee_schedules' : 'attendance_only',
                 ],
             ]);
         }
@@ -135,7 +173,7 @@ class PayrollRunService
 
     private function calculateDetail(Employee $employee, EmployeeSchedule $schedule, PayrollSetting $settings): array
     {
-        $date = $schedule->work_date->toDateString();
+        $date = Carbon::parse($schedule->work_date)->toDateString();
         $scheduledStart = Carbon::parse($date.' '.$schedule->start_time);
         $scheduledEnd = Carbon::parse($date.' '.$schedule->end_time);
 
@@ -180,9 +218,7 @@ class PayrollRunService
 
         $hourlyRate = $this->hourlyRate($employee, $settings);
         $overtimePay = ($overtimeMinutes / 60) * $hourlyRate * (float) $settings->overtime_multiplier;
-        $nightDiffMinutes = $isPresent
-            ? $this->nightDiffMinutes($actualIn, $actualOut, $settings)
-            : 0;
+        $nightDiffMinutes = $isPresent ? $this->nightDiffMinutes($actualIn, $actualOut, $settings) : 0;
         $nightDiffPay = ($nightDiffMinutes / 60) * $hourlyRate * (float) $settings->night_diff_multiplier;
 
         return [
