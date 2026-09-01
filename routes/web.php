@@ -6,6 +6,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\SchedulingController;
+use App\Http\Controllers\SssDeductionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthenticationController::class, 'showLoginForm'])->name('login');
@@ -31,6 +32,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payroll/{payrollRun}', [PayrollRunController::class, 'show'])->name('payroll.show');
     Route::patch('/payroll/{payrollRun}/confirm', [PayrollRunController::class, 'confirm'])->name('payroll.confirm');
     Route::delete('/payroll/{payrollRun}', [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
+
+    Route::resource('sss-deductions', SssDeductionController::class)->except(['show', 'create', 'edit']);
 
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
