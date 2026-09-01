@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -11,6 +12,8 @@ use App\Models\EmployeeSchedule;
 use App\Models\Attendance;
 use App\Models\PayrollItem;
 use App\Models\Category;
+use App\Models\SssDeduction;
+
 class Employee extends Model
 {
     use HasFactory;
@@ -66,7 +69,12 @@ class Employee extends Model
         return $this->hasMany(PayrollItem::class);
     }
 
-       public function category()
+    public function sssDeductions(): HasMany
+    {
+        return $this->hasMany(SssDeduction::class);
+    }
+
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
