@@ -16,11 +16,6 @@ interface PageProps {
 
 export function FlashMessage() {
     const inLayoutShell = useLayoutShell();
-
-    if (inLayoutShell) {
-        return null;
-    }
-
     const { flash } = usePage<PageProps>().props;
     const [message, setMessage] = useState<string | null>(null);
     const [isError, setIsError] = useState(false);
@@ -46,7 +41,7 @@ export function FlashMessage() {
         };
     }, [flash?.success, flash?.error]);
 
-    if (!message || !visible) {
+    if (inLayoutShell || !message || !visible) {
         return null;
     }
 
