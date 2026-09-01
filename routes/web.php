@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\SchedulingController;
@@ -35,6 +36,12 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/payroll/{payrollRun}', [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
 
     Route::resource('sss-deductions', SssDeductionController::class)->except(['show', 'create', 'edit']);
+
+    Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
+    Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
+    Route::put('/holidays/{holiday}', [HolidayController::class, 'update'])->name('holidays.update');
+    Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy'])->name('holidays.destroy');
+    Route::post('/holidays/sync', [HolidayController::class, 'sync'])->name('holidays.sync');
 
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
