@@ -6,8 +6,9 @@ import {
     LayoutDashboard,
     LogOut,
     Moon,
-    Settings2,
+    ShieldCheck,
     Sun,
+    Settings2,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const navItems = [
     { label: 'Employees', href: '/employees', icon: Users },
     { label: 'Scheduling', href: '/scheduling', icon: CalendarRange },
     { label: 'Payroll Register', href: '/payroll', icon: Wallet },
+    { label: 'SSS Deductions', href: '/sss-deductions', icon: ShieldCheck },
     { label: 'Holidays', href: '/holidays', icon: CalendarClock },
     { label: 'Settings', href: '/settings', icon: Settings2 },
 ];
@@ -67,7 +69,7 @@ export function Navbar() {
                         </span>
                     </Link>
 
-                    <nav className="hidden items-center gap-1 md:flex">
+                    <nav className="hidden items-center gap-1 overflow-x-auto md:flex">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const active =
@@ -77,7 +79,7 @@ export function Navbar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                                         active
                                             ? 'bg-primary/10 text-primary'
                                             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -111,23 +113,14 @@ export function Navbar() {
                                     {auth?.user?.email || displayName}
                                 </p>
                             </div>
-                            <button
-                                type="button"
-                                onClick={logout}
-                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted"
-                            >
+                            <button type="button" onClick={logout} className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted">
                                 <LogOut className="h-4 w-4" />
                                 Logout
                             </button>
                         </div>
                     )}
 
-                    <button
-                        type="button"
-                        onClick={toggleTheme}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Toggle theme"
-                    >
+                    <button type="button" onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Toggle theme">
                         {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                     </button>
                 </div>
@@ -136,18 +129,9 @@ export function Navbar() {
             <nav className="flex items-center gap-1 overflow-x-auto border-t px-4 py-2 md:hidden">
                 {navItems.map((item) => {
                     const Icon = item.icon;
-                    const active = window?.location.pathname === item.href;
-
+                    const active = window?.location.pathname === item.href || (item.href !== '/dashboard' && window?.location.pathname.startsWith(item.href + '/'));
                     return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
-                                active
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                            }`}
-                        >
+                        <Link key={item.href} href={item.href} className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
                             <Icon className="h-3.5 w-3.5" />
                             {item.label}
                         </Link>
