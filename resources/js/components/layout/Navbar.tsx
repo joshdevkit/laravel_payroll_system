@@ -13,6 +13,8 @@ import {
     Wallet,
 } from 'lucide-react';
 
+import { useLayoutShell } from '@/components/layout/LayoutShellContext';
+
 const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Employees', href: '/employees', icon: Users },
@@ -33,6 +35,12 @@ type PageProps = {
 };
 
 export function Navbar() {
+    const inLayoutShell = useLayoutShell();
+
+    if (inLayoutShell) {
+        return null;
+    }
+
     const { auth } = usePage<PageProps>().props;
     const [open, setOpen] = useState(false);
     const [dark, setDark] = useState(() =>
