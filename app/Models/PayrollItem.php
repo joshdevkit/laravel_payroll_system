@@ -60,7 +60,8 @@ class PayrollItem extends Model
          * total_earnings is a normal column.
          */
         'total_earnings',
-
+        'total_deductions',
+        'net_pay',
         /*
          * IMPORTANT:
          *
