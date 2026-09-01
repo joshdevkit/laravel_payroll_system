@@ -21,12 +21,26 @@ class PayrollRunController extends Controller
         ]);
     }
 
-    public function store(Request $request, PayrollRunService $service): RedirectResponse
-    {
+    public function store(
+        Request $request,
+        PayrollRunService $service
+    ): RedirectResponse {
         $validated = $request->validate([
-            'cutoff_start' => ['required', 'date'],
-            'cutoff_end' => ['required', 'date', 'after_or_equal:cutoff_start'],
-            'pay_date' => ['required', 'date'],
+            'cutoff_start' => [
+                'required',
+                'date',
+            ],
+
+            'cutoff_end' => [
+                'required',
+                'date',
+                'after_or_equal:cutoff_start',
+            ],
+
+            'pay_date' => [
+                'required',
+                'date',
+            ],
         ]);
 
         $service->createDraft(
@@ -35,39 +49,78 @@ class PayrollRunController extends Controller
             $validated['pay_date'],
         );
 
-        return back()->with('success', 'Payroll run created successfully.');
+        return back()->with(
+            'success',
+            'Payroll run created successfully.'
+        );
     }
 
-    public function show(PayrollRun $payrollRun, PayrollRunService $service): Response
-    {
-        // Older draft runs may have been created before payroll-item
-        // generation was fixed. Repair those runs before rendering review.
-        $payrollRun = $service->ensureItems($payrollRun);
+    public function show(
+        PayrollRun $payrollRun,
+        PayrollRunService $service
+    ): Response {
+        /*
+         * IMPORTANT:
+         *
+         * Draft payrolls are recalculated every time they
+         * are opened.
+         *
+         * This means if you add an SSS deduction after
+         * creating the payroll run, opening Review Payroll
+         * will pick it up.
+         */
+        $payrollRun = $service->ensureItems(
+            $payrollRun
+        );
 
-        return inertia('PayrollRuns/Show', [
-            'payrollRun' => $payrollRun,
-        ]);
+        return inertia(
+            'PayrollRuns/Show',
+            [
+                'payrollRun' =>
+                    $payrollRun,
+            ]
+        );
     }
 
-    public function confirm(PayrollRun $payrollRun): RedirectResponse
-    {
-        if ($payrollRun->status !== 'draft') {
-            return back()->with('error', 'Only draft payroll runs can be confirmed.');
+    public function confirm(
+        PayrollRun $payrollRun
+    ): RedirectResponse {
+        if (
+            $payrollRun->status !== 'draft'
+        ) {
+            return back()->with(
+                'error',
+                'Only draft payroll runs can be confirmed.'
+            );
         }
 
-        $payrollRun->update(['status' => 'completed']);
+        $payrollRun->update([
+            'status' => 'completed',
+        ]);
 
-        return back()->with('success', 'Payroll confirmed successfully.');
+        return back()->with(
+            'success',
+            'Payroll confirmed successfully.'
+        );
     }
 
-    public function destroy(PayrollRun $payrollRun): RedirectResponse
-    {
-        if ($payrollRun->status !== 'draft') {
-            return back()->with('error', 'Only draft payroll runs can be deleted.');
+    public function destroy(
+        PayrollRun $payrollRun
+    ): RedirectResponse {
+        if (
+            $payrollRun->status !== 'draft'
+        ) {
+            return back()->with(
+                'error',
+                'Only draft payroll runs can be deleted.'
+            );
         }
 
         $payrollRun->delete();
 
-        return back()->with('success', 'Payroll run deleted successfully.');
+        return back()->with(
+            'success',
+            'Payroll run deleted successfully.'
+        );
     }
 }

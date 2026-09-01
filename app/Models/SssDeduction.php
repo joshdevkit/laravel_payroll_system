@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+use App\Models\Employee;
 class SssDeduction extends Model
 {
     use HasFactory;
@@ -20,7 +21,7 @@ class SssDeduction extends Model
     protected $fillable = [
         'employee_id',
         'amount',
-        'deduction_schedule',
+        'deduction_date',
         'effective_from',
         'effective_until',
         'is_active',
@@ -29,6 +30,7 @@ class SssDeduction extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'deduction_date' => 'date:Y-m-d',
         'effective_from' => 'date:Y-m-d',
         'effective_until' => 'date:Y-m-d',
         'is_active' => 'boolean',
@@ -38,7 +40,10 @@ class SssDeduction extends Model
     {
         static::creating(function (SssDeduction $deduction) {
             if (! $deduction->getKey()) {
-                $deduction->setAttribute($deduction->getKeyName(), (string) Str::uuid());
+                $deduction->setAttribute(
+                    $deduction->getKeyName(),
+                    (string) Str::uuid()
+                );
             }
         });
     }
