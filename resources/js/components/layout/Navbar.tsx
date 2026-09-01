@@ -36,15 +36,16 @@ type PageProps = {
 
 export function Navbar() {
     const inLayoutShell = useLayoutShell();
+
+    if (inLayoutShell) {
+        return null;
+    }
+
     const { auth } = usePage<PageProps>().props;
     const [open, setOpen] = useState(false);
     const [dark, setDark] = useState(() =>
         typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
     );
-
-    if (inLayoutShell) {
-        return null;
-    }
 
     const displayName = auth?.user?.name || auth?.user?.email?.split('@')[0] || 'Admin';
     const initials = displayName
