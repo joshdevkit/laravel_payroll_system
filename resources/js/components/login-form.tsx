@@ -47,18 +47,6 @@ export function LoginForm({
           </p>
         </div>
 
-        {form.errors.email && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            {form.errors.email}
-          </div>
-        )}
-
-        {form.errors.password && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-            {form.errors.password}
-          </div>
-        )}
-
         <Field>
           <FieldLabel htmlFor="email">
             Email
@@ -72,9 +60,17 @@ export function LoginForm({
             onChange={(event) => {
               form.setData("email", event.target.value)
             }}
-            required
             disabled={form.processing}
+            className={cn(
+              "placeholder:text-muted-foreground",
+              form.errors.email && "border-destructive"
+            )}
           />
+          {form.errors.email && (
+            <p className="text-sm text-destructive">
+              {form.errors.email}
+            </p>
+          )}
         </Field>
 
         <Field>
@@ -98,9 +94,17 @@ export function LoginForm({
             onChange={(event) => {
               form.setData("password", event.target.value)
             }}
-            required
             disabled={form.processing}
+            className={cn(
+              "placeholder:text-muted-foreground",
+              form.errors.password && "border-destructive"
+            )}
           />
+          {form.errors.password && (
+            <p className="text-sm text-destructive">
+              {form.errors.password}
+            </p>
+          )}
         </Field>
 
         <Field>

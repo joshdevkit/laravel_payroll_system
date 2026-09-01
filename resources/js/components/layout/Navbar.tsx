@@ -55,6 +55,7 @@ export function Navbar() {
     const logout = () => {
         router.post('/logout');
     };
+    const window = typeof document !== 'undefined' ? document.defaultView : undefined;
 
     return (
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -70,9 +71,8 @@ export function Navbar() {
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const active =
-                                window.location.pathname === item.href ||
-                                (item.href !== '/dashboard' && window.location.pathname.startsWith(item.href + '/'));
-
+                                window?.location.pathname === item.href ||
+                                (item.href !== '/dashboard' && window?.location.pathname.startsWith(item.href + '/'));
                             return (
                                 <Link
                                     key={item.href}
@@ -136,7 +136,7 @@ export function Navbar() {
             <nav className="flex items-center gap-1 overflow-x-auto border-t px-4 py-2 md:hidden">
                 {navItems.map((item) => {
                     const Icon = item.icon;
-                    const active = window.location.pathname === item.href;
+                    const active = window?.location.pathname === item.href;
 
                     return (
                         <Link

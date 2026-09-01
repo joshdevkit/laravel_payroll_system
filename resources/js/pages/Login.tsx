@@ -24,7 +24,7 @@ export default function Login() {
 
       <div className="relative hidden bg-muted lg:block">
         <img
-          src="/banner.jpg"
+          src="/bg.png"
           alt="Login"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
         />
