@@ -97,7 +97,7 @@ export default function Show({
                                 variant="outline"
                                 className={
                                     statusClass[
-                                        payrollRun.status
+                                    payrollRun.status
                                     ] ?? ''
                                 }
                             >
@@ -162,7 +162,7 @@ export default function Show({
                         </div>
 
                         {/* DESKTOP */}
-                        <div className="min-h-0 flex-1 overflow-auto px-6 py-4 sm:block">
+                        <div className="hidden min-h-0 flex-1 overflow-auto px-6 py-4 sm:block">
                             <PayrollRegisterTable
                                 items={payrollRun.items}
                             />
@@ -193,64 +193,68 @@ export default function Show({
             <div className="shrink-0 border-t bg-background px-4 py-3 sm:px-6 sm:py-4">
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
 
-                    {payrollRun.status === 'draft' ? (
-                        <>
+                    {/* Export: Draft + Completed */}
+                    {(payrollRun.status === 'draft' ||
+                        payrollRun.status === 'completed') && (
                             <Button
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={() =>
                                     exportPayrollRunToExcel(
                                         payrollRun,
                                         payrollRun.items,
                                     )
                                 }
-                                disabled={
-                                    !payrollRun.items.length
-                                }
+                                disabled={!payrollRun.items.length}
                             >
                                 <Download className="mr-2 h-4 w-4" />
-
                                 Export to Excel
                             </Button>
+                        )}
 
+                    {/* Back: Draft + Completed */}
+                    {(payrollRun.status === 'draft' ||
+                        payrollRun.status === 'completed') && (
                             <Button
                                 variant="outline"
                                 className="w-full sm:w-auto"
-                                onClick={() =>
-                                    window.history.back()
-                                }
+                                onClick={() => window.history.back()}
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-
                                 Back
                             </Button>
+                        )}
 
-                            <Button
-                                className="w-full sm:w-auto"
-                                onClick={confirmPayroll}
-                                disabled={
-                                    confirming ||
-                                    payrollRun.items.length === 0
-                                }
-                            >
-                                {confirming && (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                )}
-
-                                Confirm Payroll
-                            </Button>
-                        </>
-                    ) : (
+                    {/* Confirm: Draft only */}
+                    {payrollRun.status === 'draft' ? (
                         <Button
                             className="w-full sm:w-auto"
-                            onClick={() =>
-                                window.history.back()
+                            onClick={confirmPayroll}
+                            disabled={
+                                confirming ||
+                                payrollRun.items.length === 0
                             }
                         >
-                            Close
+                            {confirming && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+
+                            Confirm Payroll
                         </Button>
+                    ) : (
+                        /* Close: Non-draft/non-completed */
+                        payrollRun.status !== 'completed' && (
+                            <Button
+                                className="w-full sm:w-auto"
+                                onClick={() => window.history.back()}
+                            >
+                                Close
+                            </Button>
+                        )
                     )}
                 </div>
             </div>
+
         </div>
     );
 }

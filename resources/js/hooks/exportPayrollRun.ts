@@ -65,10 +65,10 @@ const cellStyle = (
 
     fill: shaded
         ? {
-              fgColor: {
-                  rgb: AMBER_ROW,
-              },
-          }
+            fgColor: {
+                rgb: AMBER_ROW,
+            },
+        }
         : undefined,
 
     alignment: {
@@ -272,13 +272,13 @@ export function exportPayrollRunToExcel(
         const rate =
             item.employee?.rate_type === 'daily'
                 ? Number(
-                      item.employee.daily_rate ??
-                          item.employee.basic_rate ??
-                          0,
-                  )
+                    item.employee.daily_rate ??
+                    item.employee.basic_rate ??
+                    0,
+                )
                 : Number(
-                      item.employee?.basic_rate ?? 0,
-                  ) / 26;
+                    item.employee?.basic_rate ?? 0,
+                ) / 26;
 
         const basicPay = Number(
             item.basic_pay ?? 0,
@@ -410,7 +410,7 @@ export function exportPayrollRunToExcel(
             index + 1,
 
             item.employee?.employee_id ??
-                item.employee_id,
+            item.employee_id,
 
             item.employee?.full_name ?? '',
 
@@ -1116,6 +1116,23 @@ export function exportPayrollRunToExcel(
             }
         },
     );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Extend Sheet Range to Include Footer
+    |--------------------------------------------------------------------------
+    |
+    | aoa_to_sheet() computed !ref before the footer row existed, so without
+    | this the footer cells are outside the range Excel reads and get
+    | dropped from the export.
+    |
+    |--------------------------------------------------------------------------
+    */
+
+    worksheet['!ref'] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: footerRow - 1, c: COLUMN_COUNT - 1 },
+    });
 
     /*
     |--------------------------------------------------------------------------

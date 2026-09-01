@@ -22,7 +22,7 @@ export function PayrollRegisterTable({ items }: Props) {
         );
 
     return (
-        <div className="min-w-[1750px]">
+        <div className="hidden min-w-[1750px] md:block">
             <table className="w-full border-collapse text-[11px] leading-tight">
                 <thead>
                     {/* MAIN HEADER */}
@@ -161,13 +161,13 @@ export function PayrollRegisterTable({ items }: Props) {
                         const rate =
                             item.employee?.rate_type === 'daily'
                                 ? Number(
-                                      item.employee.daily_rate ??
-                                          item.employee.basic_rate ??
-                                          0
-                                  )
+                                    item.employee.daily_rate ??
+                                    item.employee.basic_rate ??
+                                    0
+                                )
                                 : Number(
-                                      item.employee?.basic_rate ?? 0
-                                  ) / 26;
+                                    item.employee?.basic_rate ?? 0
+                                ) / 26;
 
                         /*
                          * Tardy deduction is now stored directly
@@ -219,8 +219,8 @@ export function PayrollRegisterTable({ items }: Props) {
                         const earnings =
                             item.total_earnings != null
                                 ? Number(
-                                      item.total_earnings
-                                  )
+                                    item.total_earnings
+                                )
                                 : grossEarnings;
 
                         /*
@@ -260,19 +260,19 @@ export function PayrollRegisterTable({ items }: Props) {
                         const deductions =
                             item.total_deductions != null
                                 ? Number(
-                                      item.total_deductions
-                                  )
+                                    item.total_deductions
+                                )
                                 : tardyDeduction +
-                                  Number(
-                                      item.sss_deduction ?? 0
-                                  ) +
-                                  Number(
-                                      item.philhealth_deduction ?? 0
-                                  ) +
-                                  Number(
-                                      item.pagibig_deduction ?? 0
-                                  ) +
-                                  others;
+                                Number(
+                                    item.sss_deduction ?? 0
+                                ) +
+                                Number(
+                                    item.philhealth_deduction ?? 0
+                                ) +
+                                Number(
+                                    item.pagibig_deduction ?? 0
+                                ) +
+                                others;
 
                         /*
                          * Net pay.
@@ -283,8 +283,8 @@ export function PayrollRegisterTable({ items }: Props) {
                             item.net_pay != null
                                 ? Number(item.net_pay)
                                 : earnings +
-                                  cola -
-                                  deductions;
+                                cola -
+                                deductions;
 
                         return (
                             <tr
@@ -343,8 +343,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {tardyDeduction
                                         ? num(
-                                              tardyDeduction
-                                          )
+                                            tardyDeduction
+                                        )
                                         : '-'}
                                 </td>
 
@@ -366,8 +366,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.overtime_pay
                                         ? num(
-                                              item.overtime_pay
-                                          )
+                                            item.overtime_pay
+                                        )
                                         : '-'}
                                 </td>
 
@@ -375,8 +375,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.holiday_pay
                                         ? num(
-                                              item.holiday_pay
-                                          )
+                                            item.holiday_pay
+                                        )
                                         : '-'}
                                 </td>
 
@@ -384,8 +384,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.night_diff
                                         ? num(
-                                              item.night_diff
-                                          )
+                                            item.night_diff
+                                        )
                                         : '-'}
                                 </td>
 
@@ -402,8 +402,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.philhealth_deduction
                                         ? num(
-                                              item.philhealth_deduction
-                                          )
+                                            item.philhealth_deduction
+                                        )
                                         : '-'}
                                 </td>
 
@@ -411,8 +411,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.pagibig_deduction
                                         ? num(
-                                              item.pagibig_deduction
-                                          )
+                                            item.pagibig_deduction
+                                        )
                                         : '-'}
                                 </td>
 
@@ -420,8 +420,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {item.sss_deduction
                                         ? num(
-                                              item.sss_deduction
-                                          )
+                                            item.sss_deduction
+                                        )
                                         : '-'}
                                 </td>
 
@@ -451,8 +451,8 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>
                                     {deductions
                                         ? num(
-                                              deductions
-                                          )
+                                            deductions
+                                        )
                                         : '-'}
                                 </td>
 
@@ -513,7 +513,7 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.tardy_deduction ??
-                                                0
+                                            0
                                         )
                                 )
                             )}
@@ -525,33 +525,33 @@ export function PayrollRegisterTable({ items }: Props) {
                                 sum(
                                     (i) =>
                                         i.total_earnings !=
-                                        null
+                                            null
                                             ? Number(
-                                                  i.total_earnings
-                                              )
+                                                i.total_earnings
+                                            )
                                             : Number(
-                                                  i.basic_pay ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.overtime_pay ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.holiday_pay ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.night_diff ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.leave_pay ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.bonus ?? 0
-                                              )
+                                                i.basic_pay ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.overtime_pay ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.holiday_pay ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.night_diff ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.leave_pay ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.bonus ?? 0
+                                            )
                                 )
                             )}
                         </td>
@@ -613,31 +613,31 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.total_earnings ??
-                                                (
-                                                    Number(
-                                                        i.basic_pay ??
-                                                            0
-                                                    ) +
-                                                    Number(
-                                                        i.overtime_pay ??
-                                                            0
-                                                    ) +
-                                                    Number(
-                                                        i.holiday_pay ??
-                                                            0
-                                                    ) +
-                                                    Number(
-                                                        i.night_diff ??
-                                                            0
-                                                    ) +
-                                                    Number(
-                                                        i.leave_pay ??
-                                                            0
-                                                    ) +
-                                                    Number(
-                                                        i.bonus ?? 0
-                                                    )
+                                            (
+                                                Number(
+                                                    i.basic_pay ??
+                                                    0
+                                                ) +
+                                                Number(
+                                                    i.overtime_pay ??
+                                                    0
+                                                ) +
+                                                Number(
+                                                    i.holiday_pay ??
+                                                    0
+                                                ) +
+                                                Number(
+                                                    i.night_diff ??
+                                                    0
+                                                ) +
+                                                Number(
+                                                    i.leave_pay ??
+                                                    0
+                                                ) +
+                                                Number(
+                                                    i.bonus ?? 0
                                                 )
+                                            )
                                         ) +
                                         Number(
                                             (i as PayrollItem & {
@@ -655,7 +655,7 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.philhealth_deduction ??
-                                                0
+                                            0
                                         )
                                 )
                             )}
@@ -668,7 +668,7 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.pagibig_deduction ??
-                                                0
+                                            0
                                         )
                                 )
                             )}
@@ -681,7 +681,7 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.sss_deduction ??
-                                                0
+                                            0
                                         )
                                 )
                             )}
@@ -709,15 +709,15 @@ export function PayrollRegisterTable({ items }: Props) {
                                     (i) =>
                                         Number(
                                             i.other_deductions ??
-                                                0
+                                            0
                                         ) +
                                         Number(
                                             i.tax_deduction ??
-                                                0
+                                            0
                                         ) +
                                         Number(
                                             i.leave_deduction ??
-                                                0
+                                            0
                                         )
                                 )
                             )}
@@ -729,38 +729,38 @@ export function PayrollRegisterTable({ items }: Props) {
                                 sum(
                                     (i) =>
                                         i.total_deductions !=
-                                        null
+                                            null
                                             ? Number(
-                                                  i.total_deductions
-                                              )
+                                                i.total_deductions
+                                            )
                                             : Number(
-                                                  i.tardy_deduction ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.sss_deduction ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.philhealth_deduction ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.pagibig_deduction ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.other_deductions ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.tax_deduction ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  i.leave_deduction ??
-                                                      0
-                                              )
+                                                i.tardy_deduction ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.sss_deduction ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.philhealth_deduction ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.pagibig_deduction ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.other_deductions ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.tax_deduction ??
+                                                0
+                                            ) +
+                                            Number(
+                                                i.leave_deduction ??
+                                                0
+                                            )
                                 )
                             )}
                         </td>
@@ -771,23 +771,23 @@ export function PayrollRegisterTable({ items }: Props) {
                                 sum(
                                     (i) =>
                                         i.net_pay !=
-                                        null
+                                            null
                                             ? Number(
-                                                  i.net_pay
-                                              )
+                                                i.net_pay
+                                            )
                                             : Number(
-                                                  i.total_earnings ??
-                                                      0
-                                              ) +
-                                              Number(
-                                                  (i as PayrollItem & {
-                                                      cola?: number | string | null;
-                                                  }).cola ?? 0
-                                              ) -
-                                              Number(
-                                                  i.total_deductions ??
-                                                      0
-                                              )
+                                                i.total_earnings ??
+                                                0
+                                            ) +
+                                            Number(
+                                                (i as PayrollItem & {
+                                                    cola?: number | string | null;
+                                                }).cola ?? 0
+                                            ) -
+                                            Number(
+                                                i.total_deductions ??
+                                                0
+                                            )
                                 )
                             )}
                         </td>
