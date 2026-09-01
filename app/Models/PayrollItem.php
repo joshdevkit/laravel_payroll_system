@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 use App\Models\PayrollRun;
 use App\Models\Employee;
 use App\Models\PayrollScheduleDetail;
-
 class PayrollItem extends Model
 {
     use HasFactory;
@@ -57,15 +56,25 @@ class PayrollItem extends Model
         'leave_deduction',
         'other_deductions',
 
-        // Normal database column
+        /*
+         * total_earnings is a normal column.
+         */
         'total_earnings',
 
-        // DO NOT include:
-        // total_deductions
-        // net_pay
+        /*
+         * IMPORTANT:
+         *
+         * DO NOT include:
+         *
+         * total_deductions
+         * net_pay
+         *
+         * They are STORED GENERATED columns.
+         */
 
         'calculation_snapshot',
     ];
+
     protected $casts = [
         'scheduled_workdays' => 'decimal:2',
         'present_days' => 'decimal:2',
@@ -99,6 +108,10 @@ class PayrollItem extends Model
         'other_deductions' => 'decimal:2',
 
         'total_earnings' => 'decimal:2',
+
+        /*
+         * These are readable/calculated by MySQL.
+         */
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
 
@@ -107,16 +120,16 @@ class PayrollItem extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (
-            PayrollItem $item
-        ) {
-            if (! $item->getKey()) {
-                $item->setAttribute(
-                    $item->getKeyName(),
-                    (string) Str::uuid()
-                );
+        static::creating(
+            function (PayrollItem $item) {
+                if (! $item->getKey()) {
+                    $item->setAttribute(
+                        $item->getKeyName(),
+                        (string) Str::uuid()
+                    );
+                }
             }
-        });
+        );
     }
 
     public function payrollRun(): BelongsTo

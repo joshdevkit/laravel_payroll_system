@@ -35,15 +35,22 @@ class PayrollRun extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (PayrollRun $run) {
-            if (! $run->getKey()) {
-                $run->setAttribute($run->getKeyName(), (string) Str::uuid());
+        static::creating(
+            function (PayrollRun $run) {
+                if (! $run->getKey()) {
+                    $run->setAttribute(
+                        $run->getKeyName(),
+                        (string) Str::uuid()
+                    );
+                }
             }
-        });
+        );
     }
 
     public function items(): HasMany
     {
-        return $this->hasMany(PayrollItem::class);
+        return $this->hasMany(
+            PayrollItem::class
+        );
     }
 }
