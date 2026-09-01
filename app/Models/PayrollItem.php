@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+use Illuminate\Database\Eloquent\Relations\HasOne;
 class PayrollItem extends Model
 {
     use HasFactory;

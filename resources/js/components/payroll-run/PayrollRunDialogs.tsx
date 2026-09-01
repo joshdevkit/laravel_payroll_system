@@ -9,7 +9,7 @@ export function CreatePayrollRunDialog({ open, onOpenChange, cutoffStart, cutoff
     onCutoffStartChange: (v: string) => void; onCutoffEndChange: (v: string) => void; onPayDateChange: (v: string) => void; onCreate: () => void; saving: boolean;
 }) {
     const invalid = !cutoffStart || !cutoffEnd || !payDate || cutoffEnd < cutoffStart;
-    return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>New payroll run</DialogTitle><DialogDescription>Set the cutoff period and pay date. The run starts as a draft.</DialogDescription></DialogHeader>
+    return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle>New payroll register</DialogTitle><DialogDescription>Set the cutoff period and pay date. The run starts as a draft.</DialogDescription></DialogHeader>
         <div className="grid gap-4 py-2">
             <label className="grid gap-2 text-sm font-medium">Cutoff start<Input type="date" value={cutoffStart} onChange={(e) => onCutoffStartChange(e.target.value)} /></label>
             <label className="grid gap-2 text-sm font-medium">Cutoff end<Input type="date" value={cutoffEnd} min={cutoffStart || undefined} onChange={(e) => onCutoffEndChange(e.target.value)} /></label>
