@@ -12,8 +12,8 @@ class HolidayApiService
     /**
      * Return Philippine public holidays for a year.
      *
-     * The external API is treated as optional dashboard data: a failed
-     * request should never prevent the payroll application from loading.
+     * The external API is optional dashboard data. A failed request
+     * must never prevent the payroll application from loading.
      */
     public function forYear(int $year): array
     {
@@ -52,6 +52,7 @@ class HolidayApiService
     public function upcoming(int $year, string $fromDate, int $limit = 5): array
     {
         return collect($this->forYear($year))
+            ->merge($this->forYear($year + 1))
             ->filter(fn (array $holiday) => $holiday['date'] >= $fromDate)
             ->sortBy('date')
             ->take($limit)
