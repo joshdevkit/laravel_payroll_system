@@ -76,8 +76,8 @@ class PayrollSettingsController extends Controller
                 'monthly_daily_rate_divisor' => 26,
                 'work_schedule' => $this->defaultWorkSchedule(),
                 'shift_options' => $this->defaultShiftOptions(),
-                'attendance_import_start_cell' => 'C3',
-                'schedule_import_start_cell' => 'C3',
+                'attendance_import_start_cell' => 'A4',
+                'schedule_import_start_cell' => 'A4',
             ],
         );
     }

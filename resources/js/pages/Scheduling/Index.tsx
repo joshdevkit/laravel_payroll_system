@@ -30,6 +30,7 @@ import {
     todayInManila,
 } from '@/components/scheduling/schedule-utils';
 import { FlashMessage } from '@/components/layout/FlashMessage';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 
 type Employee = ScheduleEmployee & {
     employee_id?: string;
@@ -119,67 +120,61 @@ export default function Scheduling({
 
     return (
         <>
-            <FlashMessage />
-
-            <div className="min-h-svh bg-background font-sans">
-                <Navbar />
-
-                <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-                    <div className="flex flex-wrap items-end justify-between gap-4">
-                        <div>
-                            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                                Workforce
-                            </p>
-                            <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
-                                Scheduling
-                            </h1>
-                            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                                Manage employee schedules from a monthly calendar,
-                                including multiple work segments on the same date.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setBulkDialogOpen(true)}
-                                disabled={!employees.length}
-                            >
-                                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                                Bulk schedules
-                            </Button>
-                            <Button
-                                onClick={() => openAdd()}
-                                disabled={!employees.length}
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add schedule
-                            </Button>
-                        </div>
+            <AuthenticatedLayout>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                            Workforce
+                        </p>
+                        <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
+                            Scheduling
+                        </h1>
+                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                            Manage employee schedules from a monthly calendar,
+                            including multiple work segments on the same date.
+                        </p>
                     </div>
 
-                    <SchedulingCalendar
-                        selectedDate={selectedDate}
-                        schedules={schedules}
-                        employees={employees}
-                        onDateChange={setSelectedDate}
-                        onEdit={openEdit}
-                        onMore={openMore}
-                    />
-
-                    <div className="mt-4 flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-                        <span>
-                            Showing schedules from {visibleRange.start} through{' '}
-                            {visibleRange.end}.
-                        </span>
-                        <Link
-                            href="/employees"
-                            className="font-medium text-primary hover:underline"
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setBulkDialogOpen(true)}
+                            disabled={!employees.length}
                         >
-                            Manage employees
-                        </Link>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Bulk schedules
+                        </Button>
+                        <Button
+                            onClick={() => openAdd()}
+                            disabled={!employees.length}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add schedule
+                        </Button>
                     </div>
-                </main>
+                </div>
+
+                <SchedulingCalendar
+                    selectedDate={selectedDate}
+                    schedules={schedules}
+                    employees={employees}
+                    onDateChange={setSelectedDate}
+                    onEdit={openEdit}
+                    onMore={openMore}
+                />
+
+                <div className="mt-4 flex items-center justify-between rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+                    <span>
+                        Showing schedules from {visibleRange.start} through{' '}
+                        {visibleRange.end}.
+                    </span>
+                    <Link
+                        href="/employees"
+                        className="font-medium text-primary hover:underline"
+                    >
+                        Manage employees
+                    </Link>
+                </div>
 
                 <ScheduleDialog
                     open={scheduleDialogOpen}
@@ -248,7 +243,7 @@ export default function Scheduling({
                         </div>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </AuthenticatedLayout>
         </>
     );
 }

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 
 type HolidayType = 'regular' | 'special_non_working';
 
@@ -92,10 +93,8 @@ export default function Holidays({ holidays, currentYear }: { holidays: Holiday[
     };
 
     return (
-        <div className="min-h-svh bg-background font-sans">
-            <FlashMessage />
-            <Navbar />
-            <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <>
+            <AuthenticatedLayout>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">Calendar</p>
@@ -156,27 +155,27 @@ export default function Holidays({ holidays, currentYear }: { holidays: Holiday[
                         </>
                     )}
                 </div>
-            </main>
 
-            <Dialog open={formOpen} onOpenChange={setFormOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>{editing ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle><DialogDescription>Configure the holiday date, type, and notes.</DialogDescription></DialogHeader>
-                    <div className="grid gap-4">
-                        <div className="grid gap-2"><Label htmlFor="holiday-date">Date</Label><Input id="holiday-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-                        <div className="grid gap-2"><Label htmlFor="holiday-name">Holiday Name</Label><Input id="holiday-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. National Heroes Day" /></div>
-                        <div className="grid gap-2"><Label htmlFor="holiday-type">Type</Label><select id="holiday-type" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as HolidayType })}><option value="regular">Regular Holiday</option><option value="special_non_working">Special Non-Working Day</option></select></div>
-                        <div className="grid gap-2"><Label htmlFor="holiday-notes">Notes</Label><Input id="holiday-notes" value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" /></div>
-                    </div>
-                    <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button><Button onClick={save} disabled={busy || !form.date || !form.name.trim()}>{busy ? 'Saving…' : 'Save Holiday'}</Button></DialogFooter>
-                </DialogContent>
-            </Dialog>
+                <Dialog open={formOpen} onOpenChange={setFormOpen}>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>{editing ? 'Edit Holiday' : 'Add Holiday'}</DialogTitle><DialogDescription>Configure the holiday date, type, and notes.</DialogDescription></DialogHeader>
+                        <div className="grid gap-4">
+                            <div className="grid gap-2"><Label htmlFor="holiday-date">Date</Label><Input id="holiday-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                            <div className="grid gap-2"><Label htmlFor="holiday-name">Holiday Name</Label><Input id="holiday-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. National Heroes Day" /></div>
+                            <div className="grid gap-2"><Label htmlFor="holiday-type">Type</Label><select id="holiday-type" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as HolidayType })}><option value="regular">Regular Holiday</option><option value="special_non_working">Special Non-Working Day</option></select></div>
+                            <div className="grid gap-2"><Label htmlFor="holiday-notes">Notes</Label><Input id="holiday-notes" value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" /></div>
+                        </div>
+                        <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button><Button onClick={save} disabled={busy || !form.date || !form.name.trim()}>{busy ? 'Saving…' : 'Save Holiday'}</Button></DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
-            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Delete Holiday</DialogTitle><DialogDescription>Are you sure you want to delete {deleting?.name}? This cannot be undone.</DialogDescription></DialogHeader>
-                    <DialogFooter><Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button><Button variant="destructive" onClick={remove} disabled={busy}>{busy ? 'Deleting…' : 'Delete Holiday'}</Button></DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Delete Holiday</DialogTitle><DialogDescription>Are you sure you want to delete {deleting?.name}? This cannot be undone.</DialogDescription></DialogHeader>
+                        <DialogFooter><Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button><Button variant="destructive" onClick={remove} disabled={busy}>{busy ? 'Deleting…' : 'Delete Holiday'}</Button></DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </AuthenticatedLayout>
+        </>
     );
 }

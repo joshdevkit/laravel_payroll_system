@@ -15,6 +15,7 @@ import { EmployeePagination } from '@/components/employees/EmployeePagination';
 import { EmployeeSearch } from '@/components/employees/EmployeeSearch';
 import { EmployeeTable } from '@/components/employees/EmployeeTable';
 import { FlashMessage } from '@/components/layout/FlashMessage';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 
 const PAGE_SIZE = 15;
 
@@ -166,15 +167,11 @@ export default function Employees() {
 
     return (
         <>
-            <FlashMessage />
-
-            <div
-                className="min-h-svh bg-background font-sans"
-                onClick={closeMenu}
-            >
-                <Navbar />
-
-                <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+            <AuthenticatedLayout>
+                <div
+                    className="min-h-svh bg-background font-sans"
+                    onClick={closeMenu}
+                >
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
@@ -257,64 +254,64 @@ export default function Employees() {
                             </>
                         )}
                     </section>
-                </main>
 
-                {activeMenuEmployee &&
-                    menuPosition &&
-                    createPortal(
-                        <EmployeeActionsMenu
-                            employee={activeMenuEmployee}
-                            position={menuPosition}
-                            onClose={closeMenu}
-                            onEdit={openEditDialog}
-                            onDelete={(employee) => {
-                                setDeleteTarget(employee);
-                                closeMenu();
-                            }}
-                        />,
-                        document.body,
-                    )}
+                    {activeMenuEmployee &&
+                        menuPosition &&
+                        createPortal(
+                            <EmployeeActionsMenu
+                                employee={activeMenuEmployee}
+                                position={menuPosition}
+                                onClose={closeMenu}
+                                onEdit={openEditDialog}
+                                onDelete={(employee) => {
+                                    setDeleteTarget(employee);
+                                    closeMenu();
+                                }}
+                            />,
+                            document.body,
+                        )}
 
-                <EmployeeFormDialog
-                    open={formOpen}
-                    category={categories}
-                    onOpenChange={setFormOpen}
-                    employee={editingEmployee}
-                />
+                    <EmployeeFormDialog
+                        open={formOpen}
+                        category={categories}
+                        onOpenChange={setFormOpen}
+                        employee={editingEmployee}
+                    />
 
-                {deleteTarget && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
-                        <div className="w-full max-w-md rounded-[min(var(--radius-4xl),24px)] bg-popover p-6 text-popover-foreground shadow-xl ring-1 ring-foreground/5">
-                            <h2 className="text-base font-medium">
-                                Delete {deleteTarget.full_name}?
-                            </h2>
+                    {deleteTarget && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+                            <div className="w-full max-w-md rounded-[min(var(--radius-4xl),24px)] bg-popover p-6 text-popover-foreground shadow-xl ring-1 ring-foreground/5">
+                                <h2 className="text-base font-medium">
+                                    Delete {deleteTarget.full_name}?
+                                </h2>
 
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                This removes their employee record. This can't
-                                be undone.
-                            </p>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    This removes their employee record. This can't
+                                    be undone.
+                                </p>
 
-                            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={() =>
-                                        setDeleteTarget(null)
-                                    }
-                                >
-                                    Cancel
-                                </Button>
+                                <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setDeleteTarget(null)
+                                        }
+                                    >
+                                        Cancel
+                                    </Button>
 
-                                <Button
-                                    variant="destructive"
-                                    onClick={handleDelete}
-                                >
-                                    Delete
-                                </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={handleDelete}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            </AuthenticatedLayout>
         </>
     );
 }

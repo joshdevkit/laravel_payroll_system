@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     CalendarClock,
@@ -13,8 +13,6 @@ import {
     Wallet,
 } from 'lucide-react';
 
-import { useLayoutShell } from '@/components/layout/LayoutShellContext';
-
 const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Employees', href: '/employees', icon: Users },
@@ -25,31 +23,32 @@ const navItems = [
     { label: 'Settings', href: '/settings', icon: Settings2 },
 ];
 
-type PageProps = {
-    auth?: {
-        user?: {
-            name?: string;
-            email?: string;
-        };
-    };
-};
-
 export function Navbar() {
-    const inLayoutShell = useLayoutShell();
-
-    if (inLayoutShell) {
-        return null;
-    }
-
-    const { auth } = usePage<PageProps>().props;
+    const { props, url } = usePage();
+    const auth = props.auth;
     const [open, setOpen] = useState(false);
-    const [dark, setDark] = useState(() =>
-        typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
-    );
+    const [dark, setDark] = useState(false);
 
-    const displayName = auth?.user?.name || auth?.user?.email?.split('@')[0] || 'Admin';
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme');
+
+        const isDark =
+            savedTheme === 'dark' ||
+            (!savedTheme &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+        document.documentElement.classList.toggle('dark', isDark);
+        setDark(isDark);
+    }, []);
+
+    const displayName =
+        auth?.user?.name ||
+        auth?.user?.email?.split('@')[0] ||
+        'Admin';
+
     const initials = displayName
         .split(' ')
+        .filter(Boolean)
         .map((part) => part[0])
         .slice(0, 2)
         .join('')
@@ -57,15 +56,29 @@ export function Navbar() {
 
     const toggleTheme = () => {
         const next = !dark;
+
         document.documentElement.classList.toggle('dark', next);
         localStorage.setItem('theme', next ? 'dark' : 'light');
+
         setDark(next);
     };
 
     const logout = () => {
         router.post('/logout');
     };
-    const window = typeof document !== 'undefined' ? document.defaultView : undefined;
+
+    const isActive = (href: string) => {
+        const pathname = new URL(
+            url,
+            window.location.origin
+        ).pathname;
+
+        return (
+            pathname === href ||
+            (href !== '/dashboard' &&
+                pathname.startsWith(href + '/'))
+        );
+    };
 
     return (
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -80,18 +93,16 @@ export function Navbar() {
                     <nav className="hidden items-center gap-1 overflow-x-auto md:flex">
                         {navItems.map((item) => {
                             const Icon = item.icon;
-                            const active =
-                                window?.location.pathname === item.href ||
-                                (item.href !== '/dashboard' && window?.location.pathname.startsWith(item.href + '/'));
+                            const active = isActive(item.href);
+
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                                        active
-                                            ? 'bg-primary/10 text-primary'
-                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                                    }`}
+                                    className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                        }`}
                                 >
                                     <Icon className="h-4 w-4" />
                                     {item.label}
@@ -104,9 +115,10 @@ export function Navbar() {
                 <div className="relative flex items-center gap-3">
                     <button
                         type="button"
-                        onClick={() => setOpen(!open)}
+                        onClick={() => setOpen((current) => !current)}
                         className="rounded-full ring-offset-background transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         aria-label="Open account menu"
+                        aria-expanded={open}
                     >
                         <span className="flex h-8 w-8 items-center justify-center rounded-full border bg-muted text-xs font-medium">
                             {initials}
@@ -116,20 +128,37 @@ export function Navbar() {
                     {open && (
                         <div className="absolute right-10 top-10 z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
                             <div className="px-3 py-2">
-                                <p className="text-sm font-medium">My Account</p>
+                                <p className="text-sm font-medium">
+                                    My Account
+                                </p>
+
                                 <p className="truncate text-xs text-muted-foreground">
                                     {auth?.user?.email || displayName}
                                 </p>
                             </div>
-                            <button type="button" onClick={logout} className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted">
+
+                            <button
+                                type="button"
+                                onClick={logout}
+                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted"
+                            >
                                 <LogOut className="h-4 w-4" />
                                 Logout
                             </button>
                         </div>
                     )}
 
-                    <button type="button" onClick={toggleTheme} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Toggle theme">
-                        {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label="Toggle theme"
+                    >
+                        {dark ? (
+                            <Sun className="h-4 w-4" />
+                        ) : (
+                            <Moon className="h-4 w-4" />
+                        )}
                     </button>
                 </div>
             </div>
@@ -137,9 +166,17 @@ export function Navbar() {
             <nav className="flex items-center gap-1 overflow-x-auto border-t px-4 py-2 md:hidden">
                 {navItems.map((item) => {
                     const Icon = item.icon;
-                    const active = window?.location.pathname === item.href || (item.href !== '/dashboard' && window?.location.pathname.startsWith(item.href + '/'));
+                    const active = isActive(item.href);
+
                     return (
-                        <Link key={item.href} href={item.href} className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${active
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
+                        >
                             <Icon className="h-3.5 w-3.5" />
                             {item.label}
                         </Link>

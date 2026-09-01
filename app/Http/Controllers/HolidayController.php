@@ -72,7 +72,7 @@ class HolidayController extends Controller
 
         $holidays = collect($response->json())
             ->filter(fn (array $holiday) => ($holiday['global'] ?? true) !== false)
-            ->map(function (array $holiday) {
+            ->map(function (array $holiday) use ($year) {
                 $type = $this->classify($holiday['localName'] ?? '', $holiday['name'] ?? '');
 
                 return $type ? [
