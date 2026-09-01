@@ -99,12 +99,16 @@ class PayrollItem extends Model
         });
 
         /*
-         * SSS is date-effective, so it must be resolved from the payroll
-         * run's pay date rather than from a hard-coded percentage.
+         * SSS is date-effective, so it is resolved from the payroll
+         * cutoff date rather than from a hard-coded percentage.
          *
-         * This hook deliberately does not touch any attendance calculation.
-         * NSD, overtime, tardy and all other earnings are still calculated by
-         * PayrollRunService exactly as before.
+         * Using cutoff_end is important for a payroll paid after the
+         * contribution period: a December cutoff paid in January still
+         * belongs to the December contribution schedule.
+         *
+         * This hook deliberately does not touch attendance calculations.
+         * NSD, overtime, tardy and all other earnings remain owned by
+         * PayrollRunService.
          */
         static::saving(function (PayrollItem $item) {
             if (! $item->payroll_run_id || ! $item->employee_id) {
@@ -120,7 +124,7 @@ class PayrollItem extends Model
 
             $sss = app(SssContributionService::class)->calculate(
                 $employee,
-                $run->pay_date
+                $run->cutoff_end
             );
 
             $item->sss_deduction = $sss['employeeTotal'];
