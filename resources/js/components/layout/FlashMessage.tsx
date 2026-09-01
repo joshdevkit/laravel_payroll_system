@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, X, XCircle } from 'lucide-react';
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+
+import { useLayoutShell } from '@/components/layout/LayoutShellContext';
 
 interface FlashProps {
     success?: string | null;
@@ -13,33 +15,34 @@ interface PageProps {
 }
 
 export function FlashMessage() {
-    const { flash } = usePage<PageProps>().props;
+    const inLayoutShell = useLayoutShell();
 
+    if (inLayoutShell) {
+        return null;
+    }
+
+    const { flash } = usePage<PageProps>().props;
     const [message, setMessage] = useState<string | null>(null);
     const [isError, setIsError] = useState(false);
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        const showFlash = () => {
-            const nextMessage = flash?.error || flash?.success || null;
+        const nextMessage = flash?.error || flash?.success || null;
 
-            if (!nextMessage) {
-                return;
-            }
+        if (!nextMessage) {
+            return;
+        }
 
-            setMessage(nextMessage);
-            setIsError(Boolean(flash?.error));
-            setVisible(true);
+        setMessage(nextMessage);
+        setIsError(Boolean(flash?.error));
+        setVisible(true);
 
-            window.setTimeout(() => {
-                setVisible(false);
-            }, 3000);
-        };
-
-        const removeListener = router.on('success', showFlash);
+        const timeout = window.setTimeout(() => {
+            setVisible(false);
+        }, 3000);
 
         return () => {
-            removeListener();
+            window.clearTimeout(timeout);
         };
     }, [flash?.success, flash?.error]);
 
