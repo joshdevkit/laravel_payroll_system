@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use App\Models\PayrollRun;
 use App\Models\Employee;
 use App\Models\PayrollScheduleDetail;
+use App\Services\Payroll\SssContributionService;
 
 class PayrollItem extends Model
 {
@@ -85,12 +86,86 @@ class PayrollItem extends Model
         'net_pay' => 'decimal:2',
         'calculation_snapshot' => 'array',
     ];
+
     protected static function booted(): void
     {
         static::creating(function (PayrollItem $item) {
             if (! $item->getKey()) {
-                $item->setAttribute($item->getKeyName(), (string) Str::uuid());
+                $item->setAttribute(
+                    $item->getKeyName(),
+                    (string) Str::uuid()
+                );
             }
+        });
+
+        /*
+         * SSS is date-effective, so it must be resolved from the payroll
+         * run's pay date rather than from a hard-coded percentage.
+         *
+         * This hook deliberately does not touch any attendance calculation.
+         * NSD, overtime, tardy and all other earnings are still calculated by
+         * PayrollRunService exactly as before.
+         */
+        static::saving(function (PayrollItem $item) {
+            if (! $item->payroll_run_id || ! $item->employee_id) {
+                return;
+            }
+
+            $run = PayrollRun::query()->find($item->payroll_run_id);
+            $employee = Employee::query()->find($item->employee_id);
+
+            if (! $run || ! $employee) {
+                return;
+            }
+
+            $sss = app(SssContributionService::class)->calculate(
+                $employee,
+                $run->pay_date
+            );
+
+            $item->sss_deduction = $sss['employeeTotal'];
+
+            $snapshot = is_array($item->calculation_snapshot)
+                ? $item->calculation_snapshot
+                : [];
+
+            $totalEarnings = (float) (
+                $snapshot['totalEarnings']
+                ?? $item->getAttribute('total_earnings')
+                ?? 0
+            );
+
+            $previousTotalDeductions = (float) (
+                $snapshot['totalDeductions']
+                ?? $item->getAttribute('total_deductions')
+                ?? 0
+            );
+
+            $previousSss = (float) (
+                $snapshot['sssDeduction']
+                ?? 0
+            );
+
+            $totalDeductions =
+                $previousTotalDeductions
+                - $previousSss
+                + (float) $sss['employeeTotal'];
+
+            $snapshot['sssDeduction'] =
+                round((float) $sss['employeeTotal'], 2);
+
+            $snapshot['sss'] = $sss;
+
+            $snapshot['totalDeductions'] =
+                round($totalDeductions, 2);
+
+            $snapshot['netPay'] =
+                round(
+                    $totalEarnings - $totalDeductions,
+                    2
+                );
+
+            $item->calculation_snapshot = $snapshot;
         });
     }
 
