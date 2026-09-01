@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Employee;
+use App\Models\PayrollRun;
+use App\Models\PayrollScheduleDetail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-use App\Models\PayrollRun;
-use App\Models\Employee;
-use App\Models\PayrollScheduleDetail;
 class PayrollItem extends Model
 {
     use HasFactory;
@@ -56,22 +56,9 @@ class PayrollItem extends Model
         'leave_deduction',
         'other_deductions',
 
-        /*
-         * total_earnings is a normal column.
-         */
         'total_earnings',
         'total_deductions',
         'net_pay',
-        /*
-         * IMPORTANT:
-         *
-         * DO NOT include:
-         *
-         * total_deductions
-         * net_pay
-         *
-         * They are STORED GENERATED columns.
-         */
 
         'calculation_snapshot',
     ];
@@ -109,10 +96,6 @@ class PayrollItem extends Model
         'other_deductions' => 'decimal:2',
 
         'total_earnings' => 'decimal:2',
-
-        /*
-         * These are readable/calculated by MySQL.
-         */
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
 
@@ -121,36 +104,28 @@ class PayrollItem extends Model
 
     protected static function booted(): void
     {
-        static::creating(
-            function (PayrollItem $item) {
-                if (! $item->getKey()) {
-                    $item->setAttribute(
-                        $item->getKeyName(),
-                        (string) Str::uuid()
-                    );
-                }
+        static::creating(function (PayrollItem $item) {
+            if (! $item->getKey()) {
+                $item->setAttribute(
+                    $item->getKeyName(),
+                    (string) Str::uuid()
+                );
             }
-        );
+        });
     }
 
     public function payrollRun(): BelongsTo
     {
-        return $this->belongsTo(
-            PayrollRun::class
-        );
+        return $this->belongsTo(PayrollRun::class);
     }
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(
-            Employee::class
-        );
+        return $this->belongsTo(Employee::class);
     }
 
     public function scheduleDetails(): HasMany
     {
-        return $this->hasMany(
-            PayrollScheduleDetail::class
-        );
+        return $this->hasMany(PayrollScheduleDetail::class);
     }
 }
