@@ -11,6 +11,7 @@ import {
     DeletePayrollRunDialog,
 } from '@/components/payroll-run/PayrollRunDialogs';
 import type { PayrollRun } from '@/components/payroll-run/types';
+import { Header } from '@/components/layout/Header';
 
 export default function PayrollRuns({
     payrollRuns,
@@ -86,66 +87,72 @@ export default function PayrollRuns({
     ).length;
 
     return (
-        <AuthenticatedLayout>
-            <div className="min-h-svh bg-background font-sans">
-                <header className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                            Payroll
-                        </p>
+        <>
+            <Header
+                title="Payroll Register"
+                description="Manage employee payroll runs and payroll records."
+            />
+            <AuthenticatedLayout>
+                <div className="min-h-svh bg-background font-sans">
+                    <header className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                                Payroll
+                            </p>
 
-                        <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
-                            Payroll Register
-                        </h1>
+                            <h1 className="mt-1 font-display text-2xl font-bold text-foreground sm:text-3xl">
+                                Payroll Register
+                            </h1>
 
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Create, calculate, review, and confirm payroll for
-                            each cutoff period.
-                        </p>
-                    </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Create, calculate, review, and confirm payroll for
+                                each cutoff period.
+                            </p>
+                        </div>
 
-                    <Button onClick={() => setCreateOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        New payroll register
-                    </Button>
-                </header>
+                        <Button onClick={() => setCreateOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            New payroll register
+                        </Button>
+                    </header>
 
-                <PayrollRunStats
-                    total={payrollRuns.length}
-                    drafts={drafts}
-                    completed={completed}
-                />
+                    <PayrollRunStats
+                        total={payrollRuns.length}
+                        drafts={drafts}
+                        completed={completed}
+                    />
 
-                <PayrollRunHistory
-                    runs={payrollRuns}
-                    onReview={(run) => router.get(`/payroll/${run.id}`)}
-                    onDelete={(run) => {
-                        setDeleteTarget(run);
-                        setDeleteOpen(true);
-                    }}
-                />
+                    <PayrollRunHistory
+                        runs={payrollRuns}
+                        onReview={(run) => router.get(`/payroll/${run.id}`)}
+                        onDelete={(run) => {
+                            setDeleteTarget(run);
+                            setDeleteOpen(true);
+                        }}
+                    />
 
-                <CreatePayrollRunDialog
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    cutoffStart={cutoffStart}
-                    cutoffEnd={cutoffEnd}
-                    payDate={payDate}
-                    onCutoffStartChange={setCutoffStart}
-                    onCutoffEndChange={setCutoffEnd}
-                    onPayDateChange={setPayDate}
-                    onCreate={create}
-                    saving={saving}
-                />
+                    <CreatePayrollRunDialog
+                        open={createOpen}
+                        onOpenChange={setCreateOpen}
+                        cutoffStart={cutoffStart}
+                        cutoffEnd={cutoffEnd}
+                        payDate={payDate}
+                        onCutoffStartChange={setCutoffStart}
+                        onCutoffEndChange={setCutoffEnd}
+                        onPayDateChange={setPayDate}
+                        onCreate={create}
+                        saving={saving}
+                    />
 
-                <DeletePayrollRunDialog
-                    open={deleteOpen}
-                    onOpenChange={setDeleteOpen}
-                    target={deleteTarget}
-                    deleting={deleting}
-                    onDelete={remove}
-                />
-            </div>
-        </AuthenticatedLayout>
+                    <DeletePayrollRunDialog
+                        open={deleteOpen}
+                        onOpenChange={setDeleteOpen}
+                        target={deleteTarget}
+                        deleting={deleting}
+                        onDelete={remove}
+                    />
+                </div>
+            </AuthenticatedLayout>
+        </>
     );
 }
