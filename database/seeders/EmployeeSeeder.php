@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Employee;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class EmployeeSeeder extends Seeder
 {
@@ -67,7 +68,12 @@ class EmployeeSeeder extends Seeder
                 [
                     'employee_id' => $employee['employee_id'],
                 ],
-                $employee,
+                array_merge(
+                    [
+                        'id' => (string) Str::uuid(),
+                    ],
+                    $employee,
+                ),
             );
         }
     }
