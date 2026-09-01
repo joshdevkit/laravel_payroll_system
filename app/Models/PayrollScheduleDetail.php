@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+use App\Models\PayrollItem;
 class PayrollScheduleDetail extends Model
 {
     use HasFactory;
