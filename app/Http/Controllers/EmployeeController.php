@@ -32,11 +32,97 @@ class EmployeeController extends Controller
         return back()->with('success', 'Employee added successfully.');
     }
 
-    public function update(Request $request, Employee $employee): RedirectResponse
-    {
-        $employee->update($this->validatedData($request));
+    public function update(
+        Request $request,
+        Employee $employee
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'employee_id' => [
+                'required',
+                'string',
+                'max:50',
+                'unique:employees,employee_id,' . $employee->id,
+            ],
 
-        return back()->with('success', 'Employee updated successfully.');
+            'category_id' => [
+                'required',
+                'integer',
+                'exists:categories,id',
+            ],
+
+            'full_name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'employment_type' => [
+                'required',
+                'in:regular,probationary,contractual',
+            ],
+
+            'rate_type' => [
+                'required',
+                'in:daily,monthly',
+            ],
+
+            'basic_rate' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
+            'daily_rate' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
+
+            'sss_no' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'philhealth_no' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'pagibig_no' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'tin' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+
+            'date_hired' => [
+                'required',
+                'date',
+            ],
+        ]);
+
+        /*
+         * Keep only the appropriate rate.
+         */
+        if ($validated['rate_type'] === 'daily') {
+            $validated['basic_rate'] = null;
+        } else {
+            $validated['daily_rate'] = null;
+        }
+
+        $employee->update($validated);
+
+        return back()->with(
+            'success',
+            'Employee updated successfully.'
+        );
     }
 
     public function destroy(Employee $employee): RedirectResponse
