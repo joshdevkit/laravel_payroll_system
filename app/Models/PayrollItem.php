@@ -2,16 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Employee;
+use App\Models\PayrollRun;
+use App\Models\PayrollScheduleDetail;
+use App\Models\SssContribution;
+use App\Services\Payroll\SssContributionService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
-
-use App\Models\PayrollRun;
-use App\Models\Employee;
-use App\Models\PayrollScheduleDetail;
-use App\Services\Payroll\SssContributionService;
 
 class PayrollItem extends Model
 {
@@ -50,9 +50,6 @@ class PayrollItem extends Model
         'tax_deduction',
         'leave_deduction',
         'other_deductions',
-        'total_earnings',
-        'total_deductions',
-        'net_pay',
         'calculation_snapshot',
     ];
 
@@ -98,18 +95,11 @@ class PayrollItem extends Model
             }
         });
 
-        /*
-         * SSS is date-effective, so it is resolved from the payroll
-         * cutoff date rather than from a hard-coded percentage.
-         *
-         * Using cutoff_end is important for a payroll paid after the
-         * contribution period: a December cutoff paid in January still
-         * belongs to the December contribution schedule.
-         *
-         * This hook deliberately does not touch attendance calculations.
-         * NSD, overtime, tardy and all other earnings remain owned by
-         * PayrollRunService.
-         */
+        // SSS is an employee/payroll transaction, not part of the
+        // contribution-rate master table. Resolve the rate while saving
+        // the payroll item, then persist the actual contribution after the
+        // payroll item has an ID. This preserves the existing NSD/tardy
+        // calculations in PayrollRunService.
         static::saving(function (PayrollItem $item) {
             if (! $item->payroll_run_id || ! $item->employee_id) {
                 return;
@@ -128,48 +118,47 @@ class PayrollItem extends Model
             );
 
             $item->sss_deduction = $sss['employeeTotal'];
+        });
 
-            $snapshot = is_array($item->calculation_snapshot)
-                ? $item->calculation_snapshot
-                : [];
+        static::saved(function (PayrollItem $item) {
+            if (! $item->payroll_run_id || ! $item->employee_id) {
+                return;
+            }
 
-            $totalEarnings = (float) (
-                $snapshot['totalEarnings']
-                ?? $item->getAttribute('total_earnings')
-                ?? 0
+            $run = $item->payrollRun()->first();
+            $employee = $item->employee()->first();
+
+            if (! $run || ! $employee) {
+                return;
+            }
+
+            $sss = app(SssContributionService::class)->calculate(
+                $employee,
+                $run->cutoff_end
             );
 
-            $previousTotalDeductions = (float) (
-                $snapshot['totalDeductions']
-                ?? $item->getAttribute('total_deductions')
-                ?? 0
+            $scheduleId = $sss['contributionTableId'];
+
+            SssContribution::query()->updateOrCreate(
+                ['payroll_item_id' => $item->id],
+                [
+                    'employee_id' => $employee->id,
+                    'payroll_run_id' => $run->id,
+                    'sss_contribution_table_id' => $scheduleId,
+                    'contribution_date' => $run->cutoff_end,
+                    'monthly_compensation' => $sss['monthlyCompensation'],
+                    'monthly_salary_credit' => $sss['monthlySalaryCredit'],
+                    'employee_regular_ss' => $sss['employeeRegularSs'],
+                    'employee_mpf' => $sss['employeeMpf'],
+                    'employee_total' => $sss['employeeTotal'],
+                    'employer_regular_ss' => $sss['employerRegularSs'],
+                    'employer_mpf' => $sss['employerMpf'],
+                    'employer_ec' => $sss['employerEc'],
+                    'employer_total' => $sss['employerTotal'],
+                    'effective_from' => $sss['effectiveFrom'],
+                    'source' => $sss['source'],
+                ]
             );
-
-            $previousSss = (float) (
-                $snapshot['sssDeduction']
-                ?? 0
-            );
-
-            $totalDeductions =
-                $previousTotalDeductions
-                - $previousSss
-                + (float) $sss['employeeTotal'];
-
-            $snapshot['sssDeduction'] =
-                round((float) $sss['employeeTotal'], 2);
-
-            $snapshot['sss'] = $sss;
-
-            $snapshot['totalDeductions'] =
-                round($totalDeductions, 2);
-
-            $snapshot['netPay'] =
-                round(
-                    $totalEarnings - $totalDeductions,
-                    2
-                );
-
-            $item->calculation_snapshot = $snapshot;
         });
     }
 
@@ -186,5 +175,10 @@ class PayrollItem extends Model
     public function scheduleDetails(): HasMany
     {
         return $this->hasMany(PayrollScheduleDetail::class);
+    }
+
+    public function sssContribution(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SssContribution::class);
     }
 }
