@@ -13,6 +13,7 @@ class DeductionCalculationResult
         private float $leave,
         private float $other,
         private float $total,
+        private ?array $sssContribution = null,
     ) {
     }
 
@@ -54,5 +55,10 @@ class DeductionCalculationResult
     public function total(): float
     {
         return $this->total;
+    }
+
+    public function sssContribution(): ?array
+    {
+        return $this->sssContribution;
     }
 }
