@@ -25,35 +25,14 @@ class PayrollCalculator
         PayrollSetting $settings,
         Employee $employee
     ): PayrollCalculationResult {
-        $start = Carbon::parse(
-            $run->cutoff_start
-        )->toDateString();
+        $start = Carbon::parse($run->cutoff_start)->toDateString();
+        $end = Carbon::parse($run->cutoff_end)->toDateString();
 
-        $end = Carbon::parse(
-            $run->cutoff_end
-        )->toDateString();
+        $rate = $this->calculateDailyRate($employee, $settings);
 
-        /*
-         * ==========================================
-         * RATE
-         * ==========================================
-         */
-        $rate = $this->calculateDailyRate(
-            $employee,
-            $settings
-        );
+        $dailyWorkHours = max(1, (float) $settings->daily_work_hours);
+        $hourlyRate = $rate / $dailyWorkHours;
 
-        $hourlyRate = $rate /
-            max(
-                1,
-                (float) $settings->daily_work_hours
-            );
-
-        /*
-         * ==========================================
-         * ATTENDANCE
-         * ==========================================
-         */
         $attendance = $this->attendanceCalculator->calculate(
             $employee,
             $settings,
@@ -63,23 +42,22 @@ class PayrollCalculator
         );
 
         /*
-         * ==========================================
-         * BASIC PAY
-         * ==========================================
+         * Basic pay is based on actual paid regular minutes, not merely
+         * the number of present segments. This preserves full-day pay for
+         * a complete shift while correctly prorating half-day/undertime
+         * attendance.
          *
-         * Preserves the existing behavior:
-         *
-         * present segments × daily rate
+         * Example:
+         * 8 scheduled hours × ₱500/day = ₱500
+         * 4 worked regular hours × ₱62.50/hour = ₱250
          */
-        $basicPay =
-            $attendance->presentSegments()
-            * $rate;
+        $regularMinutes = array_sum(array_map(
+            static fn (array $detail): int => (int) ($detail['regularMinutes'] ?? 0),
+            $attendance->details()
+        ));
 
-        /*
-         * ==========================================
-         * LEAVE
-         * ==========================================
-         */
+        $basicPay = ($regularMinutes / 60) * $hourlyRate;
+
         $leave = $this->leaveCalculator->calculate(
             $employee,
             $settings,
@@ -88,11 +66,6 @@ class PayrollCalculator
             $rate
         );
 
-        /*
-         * ==========================================
-         * HOLIDAY
-         * ==========================================
-         */
         $holiday = $this->holidayCalculator->calculate(
             $settings,
             $start,
@@ -101,11 +74,6 @@ class PayrollCalculator
             $attendance->presentDates()
         );
 
-        /*
-         * ==========================================
-         * EARNINGS
-         * ==========================================
-         */
         $totalEarnings =
             $basicPay
             + $attendance->overtimePay()
@@ -113,257 +81,75 @@ class PayrollCalculator
             + $attendance->nightDiffPay()
             + $leave->pay();
 
-        /*
-         * ==========================================
-         * DEDUCTIONS
-         * ==========================================
-         */
         $deductions = $this->deductionCalculator->calculate(
             $employee,
             $run,
             $attendance->tardyDeduction()
         );
 
-        $totalDeductions =
-            $deductions->total();
+        $totalDeductions = $deductions->total();
+        $netPay = $totalEarnings - $totalDeductions;
 
-        /*
-         * ==========================================
-         * NET PAY
-         * ==========================================
-         *
-         * This is only used in the snapshot.
-         *
-         * MySQL calculates payroll_items.net_pay.
-         */
-        $netPay =
-            $totalEarnings
-            - $totalDeductions;
-
-        /*
-         * ==========================================
-         * SUMMARY
-         * ==========================================
-         */
         $summary = [
-            'presentDays' =>
-            $attendance->presentDays(),
-
-            'absentDays' =>
-            $attendance->absentDays(),
-
-            'leaveDays' =>
-            $leave->totalDays(),
-
-            'paidLeaveDays' =>
-            $leave->paidDays(),
-
-            'unpaidLeaveDays' =>
-            $leave->unpaidDays(),
-
-            'holidayDays' =>
-            $holiday->days(),
-
-            'lateMinutes' =>
-            $attendance->lateMinutes(),
-
-            'tardyMinutes' =>
-            $attendance->lateMinutes(),
-
-            'tardyDeduction' =>
-            $this->money(
-                $attendance->tardyDeduction()
-            ),
-
-            'sssDeduction' =>
-            $this->money(
-                $deductions->sss()
-            ),
-
-            'undertimeMinutes' =>
-            $attendance->undertimeMinutes(),
-
-            'overtimeMinutes' =>
-            $attendance->overtimeMinutes(),
-
-            'nightDiffMinutes' =>
-            $attendance->nightDiffMinutes(),
-
-            'overtimePay' =>
-            $this->money(
-                $attendance->overtimePay()
-            ),
-
-            'nightDiffPay' =>
-            $this->money(
-                $attendance->nightDiffPay()
-            ),
-
-            'holidayPay' =>
-            $this->money(
-                $holiday->pay()
-            ),
-
-            'leavePay' =>
-            $this->money(
-                $leave->pay()
-            ),
-
-            'scheduledWorkdays' =>
-            $attendance->scheduledWorkdays(),
-
-            'paidDays' =>
-            $attendance->presentDays()
-                + $leave->paidDays(),
-
-            'totalEarnings' =>
-            $this->money(
-                $totalEarnings
-            ),
-
-            'totalDeductions' =>
-            $this->money(
-                $totalDeductions
-            ),
-
-            'netPay' =>
-            $this->money(
-                $netPay
-            ),
-
-            'scheduleDetails' =>
-            $attendance->details(),
+            'presentDays' => $attendance->presentDays(),
+            'absentDays' => $attendance->absentDays(),
+            'leaveDays' => $leave->totalDays(),
+            'paidLeaveDays' => $leave->paidDays(),
+            'unpaidLeaveDays' => $leave->unpaidDays(),
+            'holidayDays' => $holiday->days(),
+            'lateMinutes' => $attendance->lateMinutes(),
+            'tardyMinutes' => $attendance->lateMinutes(),
+            'tardyDeduction' => $this->money($attendance->tardyDeduction()),
+            'sssDeduction' => $this->money($deductions->sss()),
+            'undertimeMinutes' => $attendance->undertimeMinutes(),
+            'overtimeMinutes' => $attendance->overtimeMinutes(),
+            'nightDiffMinutes' => $attendance->nightDiffMinutes(),
+            'overtimePay' => $this->money($attendance->overtimePay()),
+            'nightDiffPay' => $this->money($attendance->nightDiffPay()),
+            'holidayPay' => $this->money($holiday->pay()),
+            'leavePay' => $this->money($leave->pay()),
+            'scheduledWorkdays' => $attendance->scheduledWorkdays(),
+            'paidDays' => $attendance->presentDays() + $leave->paidDays(),
+            'regularMinutes' => $regularMinutes,
+            'regularHours' => round($regularMinutes / 60, 2),
+            'totalEarnings' => $this->money($totalEarnings),
+            'totalDeductions' => $this->money($totalDeductions),
+            'netPay' => $this->money($netPay),
+            'scheduleDetails' => $attendance->details(),
         ];
 
-        /*
-         * ==========================================
-         * DATABASE ITEM
-         * ==========================================
-         *
-         * DO NOT save:
-         *
-         * total_deductions
-         * net_pay
-         *
-         * They are generated columns.
-         */
         $item = [
-            'employee_id' =>
-            $employee->id,
-
-            'scheduled_workdays' =>
-            $attendance->scheduledWorkdays(),
-
-            'present_days' =>
-            $attendance->presentDays(),
-
-            'absent_days' =>
-            $attendance->absentDays(),
-
-            'leave_days' =>
-            $leave->totalDays(),
-
-            'paid_leave_days' =>
-            $leave->paidDays(),
-
-            'unpaid_leave_days' =>
-            $leave->unpaidDays(),
-
-            'holiday_days' =>
-            $holiday->days(),
-
-            'late_minutes' =>
-            $attendance->lateMinutes(),
-
-            'undertime_minutes' =>
-            $attendance->undertimeMinutes(),
-
-            'overtime_minutes' =>
-            $attendance->overtimeMinutes(),
-
-            'night_diff_minutes' =>
-            $attendance->nightDiffMinutes(),
-
-            'basic_pay' =>
-            $this->money($basicPay),
-
-            'overtime_pay' =>
-            $this->money(
-                $attendance->overtimePay()
-            ),
-
-            'holiday_pay' =>
-            $this->money(
-                $holiday->pay()
-            ),
-
-            'night_diff' =>
-            $this->money(
-                $attendance->nightDiffPay()
-            ),
-
-            'leave_pay' =>
-            $this->money(
-                $leave->pay()
-            ),
-
-            'bonus' =>
-            0,
-
-            'sss_deduction' =>
-            $this->money(
-                $deductions->sss()
-            ),
-
-            'philhealth_deduction' =>
-            $this->money(
-                $deductions->philhealth()
-            ),
-
-            'pagibig_deduction' =>
-            $this->money(
-                $deductions->pagibig()
-            ),
-
-            'tax_deduction' =>
-            $this->money(
-                $deductions->tax()
-            ),
-
-            'leave_deduction' =>
-            $this->money(
-                $deductions->leave()
-            ),
-
-            'other_deductions' =>
-            $this->money(
-                $deductions->other()
-            ),
-
-            'tardy_deduction' =>
-            $this->money(
-                $attendance->tardyDeduction()
-            ),
-
-            // SAVE THESE
-            'total_earnings' =>
-            $this->money(
-                $totalEarnings
-            ),
-
-            'total_deductions' =>
-            $this->money(
-                $totalDeductions
-            ),
-
-            'net_pay' =>
-            $this->money(
-                $netPay
-            ),
-
-            'calculation_snapshot' =>
-            $summary,
+            'employee_id' => $employee->id,
+            'scheduled_workdays' => $attendance->scheduledWorkdays(),
+            'present_days' => $attendance->presentDays(),
+            'absent_days' => $attendance->absentDays(),
+            'leave_days' => $leave->totalDays(),
+            'paid_leave_days' => $leave->paidDays(),
+            'unpaid_leave_days' => $leave->unpaidDays(),
+            'holiday_days' => $holiday->days(),
+            'late_minutes' => $attendance->lateMinutes(),
+            'undertime_minutes' => $attendance->undertimeMinutes(),
+            'overtime_minutes' => $attendance->overtimeMinutes(),
+            'night_diff_minutes' => $attendance->nightDiffMinutes(),
+            'basic_pay' => $this->money($basicPay),
+            'overtime_pay' => $this->money($attendance->overtimePay()),
+            'holiday_pay' => $this->money($holiday->pay()),
+            'night_diff' => $this->money($attendance->nightDiffPay()),
+            'leave_pay' => $this->money($leave->pay()),
+            'bonus' => 0,
+            'sss_deduction' => $this->money($deductions->sss()),
+            'philhealth_deduction' => $this->money($deductions->philhealth()),
+            'pagibig_deduction' => $this->money($deductions->pagibig()),
+            'tax_deduction' => $this->money($deductions->tax()),
+            'leave_deduction' => $this->money($deductions->leave()),
+            'other_deductions' => $this->money($deductions->other()),
+            'tardy_deduction' => $this->money($attendance->tardyDeduction()),
+            'total_earnings' => $this->money($totalEarnings),
+            'total_deductions' => $this->money($totalDeductions),
+            'net_pay' => $this->money($netPay),
+            'calculation_snapshot' => $summary,
         ];
+
         return new PayrollCalculationResult(
             $item,
             $summary,
@@ -371,25 +157,15 @@ class PayrollCalculator
         );
     }
 
-    /**
-     * Calculate the employee's daily rate.
-     */
     private function calculateDailyRate(
         Employee $employee,
         PayrollSetting $settings
     ): float {
         if ($employee->rate_type === 'daily') {
-            return (float) (
-                $employee->daily_rate
-                ?? $employee->basic_rate
-                ?? 0
-            );
+            return (float) ($employee->daily_rate ?? $employee->basic_rate ?? 0);
         }
 
-        return (float) (
-            $employee->basic_rate
-            ?? 0
-        ) / max(
+        return (float) ($employee->basic_rate ?? 0) / max(
             1,
             (float) $settings->monthly_daily_rate_divisor
         );
@@ -397,11 +173,6 @@ class PayrollCalculator
 
     private function money(float $value): float
     {
-        return (float) number_format(
-            $value,
-            2,
-            '.',
-            ''
-        );
+        return (float) number_format($value, 2, '.', '');
     }
 }
