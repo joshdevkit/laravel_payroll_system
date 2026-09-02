@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeSssContributionController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
@@ -22,6 +23,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->name('employees.attendance.index');
     Route::post('/employees/{employee}/attendance/import', [EmployeeAttendanceController::class, 'import'])->name('employees.attendance.import');
     Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])->name('employees.attendance.destroy');
+    Route::get('/employees/{employee}/sss-contributions', [EmployeeSssContributionController::class, 'index'])->name('employees.sss-contributions.index');
 
     Route::get('/scheduling', [SchedulingController::class, 'index'])->name('schedules.index');
     Route::post('/scheduling', [SchedulingController::class, 'store'])->name('schedules.store');
