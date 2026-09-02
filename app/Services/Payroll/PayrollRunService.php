@@ -52,30 +52,15 @@ class PayrollRunService
     }
 
     /**
-     * Make sure every employee has a payroll item.
+     * Recalculate every item while the payroll run is still a draft.
+     *
+     * This is important because statutory deductions such as SSS can be
+     * configured or updated after the draft was initially created.
      */
     public function ensureItems(
         PayrollRun $run
     ): PayrollRun {
         if ($run->status !== 'draft') {
-            return $run->load([
-                'items.employee',
-                'items.scheduleDetails',
-            ]);
-        }
-
-        $employeeIds = Employee::query()
-            ->pluck('id');
-
-        $existingEmployeeIds = $run
-            ->items()
-            ->pluck('employee_id');
-
-        $missingEmployees = $employeeIds->diff(
-            $existingEmployeeIds
-        );
-
-        if ($missingEmployees->isEmpty()) {
             return $run->load([
                 'items.employee',
                 'items.scheduleDetails',
