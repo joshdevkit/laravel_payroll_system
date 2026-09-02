@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthenticationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\HolidayController;
@@ -35,7 +36,11 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/payroll/{payrollRun}/confirm', [PayrollRunController::class, 'confirm'])->name('payroll.confirm');
     Route::delete('/payroll/{payrollRun}', [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
 
-    Route::resource('sss-deductions', SssDeductionController::class)->except(['show', 'create', 'edit']);
+    Route::get('/deductions', [DeductionController::class, 'index'])->name('deductions.index');
+
+    // Keep the old URL working for existing bookmarks while the UI moves to /deductions.
+    Route::redirect('/sss-deductions', '/deductions');
+    Route::resource('sss-deductions', SssDeductionController::class)->except(['index', 'show', 'create', 'edit']);
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
