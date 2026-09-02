@@ -22,11 +22,13 @@ class SssContributionCalculator
     public function calculate(
         Employee $employee,
         PayrollRun $run,
-        PayrollSetting $settings,
+        ?PayrollSetting $settings = null,
     ): ?array {
         if (! $employee->sss_no) {
             return null;
         }
+
+        $settings ??= PayrollSetting::query()->findOrFail(1);
 
         $payDate = Carbon::parse($run->pay_date)->toDateString();
         $monthlyCompensation = $this->monthlyCompensation($employee, $settings);
