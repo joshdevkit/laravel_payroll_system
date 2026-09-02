@@ -113,8 +113,8 @@ return new class extends Migration
             $table->integer('monthly_daily_rate_divisor')->default(26);
             $table->json('work_schedule')->nullable();
             $table->json('shift_options')->nullable();
-            $table->string('attendance_import_start_cell')->default('C3');
-            $table->string('schedule_import_start_cell')->default('C3');
+            $table->string('attendance_import_start_cell')->default('A4');
+            $table->string('schedule_import_start_cell')->default('A4');
             $table->timestamps();
         });
 
@@ -138,8 +138,8 @@ return new class extends Migration
             'monthly_daily_rate_divisor' => 26,
             'work_schedule' => null,
             'shift_options' => null,
-            'attendance_import_start_cell' => 'C3',
-            'schedule_import_start_cell' => 'C3',
+            'attendance_import_start_cell' => 'A4',
+            'schedule_import_start_cell' => 'A4',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

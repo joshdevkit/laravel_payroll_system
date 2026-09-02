@@ -22,6 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout'
 
 type SssContributionTable = {
     id: number
@@ -53,25 +54,21 @@ type DeductionSection = 'sss' | 'philhealth' | 'pagibig'
 const navItems: Array<{
     id: DeductionSection
     label: string
-    description: string
     icon: typeof ShieldCheck
 }> = [
     {
         id: 'sss',
         label: 'SSS',
-        description: 'Social Security System',
         icon: ShieldCheck,
     },
     {
         id: 'philhealth',
         label: 'PhilHealth',
-        description: 'Health insurance contribution',
         icon: HeartPulse,
     },
     {
         id: 'pagibig',
         label: 'Pag-IBIG',
-        description: 'Home development mutual fund',
         icon: Landmark,
     },
 ]
@@ -136,12 +133,9 @@ export default function Index({
     }
 
     return (
-        <div className="min-h-svh bg-background font-sans">
-            <FlashMessage />
-            <Navbar />
-
-            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-                <div>
+        <>
+        <AuthenticatedLayout>
+                    <div>
                     <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                         Payroll
                     </p>
@@ -180,9 +174,6 @@ export default function Index({
                                             <span className="min-w-0">
                                                 <span className="block text-sm font-medium">
                                                     {item.label}
-                                                </span>
-                                                <span className="block truncate text-xs font-normal text-muted-foreground">
-                                                    {item.description}
                                                 </span>
                                             </span>
                                         </Button>
@@ -325,9 +316,6 @@ export default function Index({
                                                 <h2 className="text-sm font-semibold">
                                                     Contribution schedule
                                                 </h2>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Effective January 1, 2025
-                                                </p>
                                             </div>
 
                                             <Input
@@ -410,7 +398,7 @@ export default function Index({
                         </section>
                     </div>
                 </Card>
-            </main>
-        </div>
+        </AuthenticatedLayout>
+        </>
     )
 }
