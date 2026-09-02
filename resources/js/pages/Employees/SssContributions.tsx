@@ -259,7 +259,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                     </CardHeader>
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="flex justify-between gap-4">
-                                                            <span className="text-muted-foreground">Monthly compensation used</span>
+                                                            <span className="text-muted-foreground">Total earnings</span>
                                                             <span className="font-mono font-semibold">{peso.format(monthlyCompensation)}</span>
                                                         </div>
                                                         <div className="flex justify-between gap-4">
@@ -326,7 +326,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                             <span className="font-mono font-semibold">{peso.format(employerEc)}</span>
                                                         </div>
                                                         <div className="flex justify-between gap-4 border-t pt-3">
-                                                            <span className="font-semibold">Employer contribution cost</span>
+                                                            <span className="font-semibold">Total SSS remittance</span>
                                                             <span className="font-mono font-bold">{peso.format(employerShare)}</span>
                                                         </div>
                                                     </CardContent>
@@ -338,11 +338,11 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                     </CardHeader>
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="flex justify-between gap-4">
-                                                            <span>Employee payroll deduction</span>
+                                                            <span>Employee Share</span>
                                                             <span className="font-mono font-bold">{peso.format(employeeShare)}</span>
                                                         </div>
                                                         <div className="flex justify-between gap-4">
-                                                            <span>Employer contribution cost</span>
+                                                            <span>Employer Share</span>
                                                             <span className="font-mono font-bold">{peso.format(employerShare)}</span>
                                                         </div>
                                                         <div className="flex justify-between gap-4 border-t pt-3 text-base">
@@ -356,9 +356,9 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                 </Card>
                                             </div>
 
-                                            <div className="border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:px-5">
+                                            {/* <div className="border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:px-5">
                                                 Source: {item.source || 'SSS contribution table'} · Effective {date(item.effective_from)}
-                                            </div>
+                                            </div> */}
                                         </div>
                                     )
                                 })
