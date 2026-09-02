@@ -9,18 +9,12 @@ use App\Models\SssContribution;
 use App\Models\SssContributionTable;
 use Carbon\Carbon;
 
-use Illuminate\Support\Facades\DB;
-use App\Models\PayrollItem;
-use App\Models\PayrollScheduleDetail;
 class SssContributionCalculator
 {
     /**
-     * Calculate the employee's SSS contribution for the payroll month.
-     *
-     * SSS is a monthly contribution. This implementation applies the
-     * employee's full monthly share to the first payroll contribution
-     * generated for that employee in the calendar month and prevents a
-     * second payroll in the same month from deducting it again.
+     * Calculate the SSS contribution for the payroll cutoff selected by the
+     * employee. SSS itself is a monthly contribution; the employee's full
+     * monthly share is deducted only on the employee's configured cutoff.
      */
     public function calculate(
         Employee $employee,
@@ -28,6 +22,17 @@ class SssContributionCalculator
         ?PayrollSetting $settings = null,
     ): ?array {
         if (! $employee->sss_no) {
+            return null;
+        }
+
+        $preferredCutoff = $employee->sss_deduction_cutoff;
+
+        // A cutoff must be explicitly selected before SSS can be deducted.
+        if (! in_array($preferredCutoff, ['first', 'second'], true)) {
+            return null;
+        }
+
+        if ($this->payrollCutoff($run) !== $preferredCutoff) {
             return null;
         }
 
@@ -60,30 +65,41 @@ class SssContributionCalculator
         $monthStart = Carbon::parse($payDate)->startOfMonth()->toDateString();
         $monthEnd = Carbon::parse($payDate)->endOfMonth()->toDateString();
 
+        // If this month's SSS has already been deducted by another payroll
+        // run, do not deduct it again. This also protects against rebuilding
+        // a draft payroll after another cutoff has already been calculated.
         $alreadyDeducted = (float) SssContribution::query()
             ->where('employee_id', $employee->id)
             ->whereBetween('contribution_date', [$monthStart, $monthEnd])
             ->where('payroll_run_id', '!=', $run->id)
             ->sum('employee_total');
 
-        $monthlyEmployeeTotal = (float) $table->employee_total;
-        $remaining = max(0, $monthlyEmployeeTotal - $alreadyDeducted);
+        if ($alreadyDeducted > 0) {
+            return null;
+        }
 
         return [
             'sss_contribution_table_id' => $table->id,
             'contribution_date' => $payDate,
             'monthly_compensation' => round($monthlyCompensation, 2),
             'monthly_salary_credit' => (float) $table->monthly_salary_credit,
-            'employee_regular_ss' => $remaining > 0 ? (float) $table->employee_regular_ss : 0,
-            'employee_mpf' => $remaining > 0 ? (float) $table->employee_mpf : 0,
-            'employee_total' => round($remaining, 2),
-            'employer_regular_ss' => $remaining > 0 ? (float) $table->employer_regular_ss : 0,
-            'employer_mpf' => $remaining > 0 ? (float) $table->employer_mpf : 0,
-            'employer_ec' => $remaining > 0 ? (float) $table->employer_ec : 0,
-            'employer_total' => $remaining > 0 ? (float) $table->employer_total : 0,
+            'employee_regular_ss' => (float) $table->employee_regular_ss,
+            'employee_mpf' => (float) $table->employee_mpf,
+            'employee_total' => (float) $table->employee_total,
+            'employer_regular_ss' => (float) $table->employer_regular_ss,
+            'employer_mpf' => (float) $table->employer_mpf,
+            'employer_ec' => (float) $table->employer_ec,
+            'employer_total' => (float) $table->employer_total,
             'effective_from' => $table->effective_from->toDateString(),
             'source' => $table->source,
         ];
+    }
+
+    private function payrollCutoff(PayrollRun $run): string
+    {
+        return Carbon::parse($run->cutoff_end)->day <= 15
+            ? 'first'
+            : 'second';
     }
 
     private function monthlyCompensation(
