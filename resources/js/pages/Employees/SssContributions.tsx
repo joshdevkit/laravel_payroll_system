@@ -1,9 +1,9 @@
 import { Link } from '@inertiajs/react'
 import { ArrowLeft, CalendarDays, CircleDollarSign, FileText, Landmark } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 type PayrollRun = {
     id: string
@@ -62,6 +62,18 @@ const cutoffLabel = (cutoff: Props['employee']['sss_deduction_cutoff']) => {
 }
 
 export default function SssContributions({ employee, contributions }: Props) {
+    const employeeTotal = contributions.reduce(
+        (sum, item) => sum + Number(item.employee_total),
+        0,
+    )
+
+    const employerTotal = contributions.reduce(
+        (sum, item) => sum + Number(item.employer_total),
+        0,
+    )
+
+    const totalRemittance = employeeTotal + employerTotal
+
     return (
         <div className="min-h-svh bg-background p-4 sm:p-6 lg:p-8">
             <div className="mx-auto max-w-6xl space-y-6">
@@ -125,10 +137,8 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 <CircleDollarSign className="size-5" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground">Employee contributions</p>
-                                <p className="text-xl font-semibold">
-                                    {peso.format(contributions.reduce((sum, item) => sum + Number(item.employee_total), 0))}
-                                </p>
+                                <p className="text-xs text-muted-foreground">Employee deductions</p>
+                                <p className="text-xl font-semibold">{peso.format(employeeTotal)}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -138,14 +148,32 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 <Landmark className="size-5" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground">Employer contributions</p>
-                                <p className="text-xl font-semibold">
-                                    {peso.format(contributions.reduce((sum, item) => sum + Number(item.employer_total), 0))}
-                                </p>
+                                <p className="text-xs text-muted-foreground">Employer contribution</p>
+                                <p className="text-xl font-semibold">{peso.format(employerTotal)}</p>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm font-semibold">SSS contribution breakdown</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Only the employee share is deducted from payroll. The employer share is an additional employer cost and is not deducted from the employee's net pay.
+                                </p>
+                            </div>
+                            <div className="shrink-0 rounded-lg border bg-background px-4 py-3 text-right">
+                                <p className="text-xs text-muted-foreground">Total remittance</p>
+                                <p className="font-mono text-lg font-semibold">{peso.format(totalRemittance)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {peso.format(employeeTotal)} employee + {peso.format(employerTotal)} employer
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>
@@ -164,35 +192,59 @@ export default function SssContributions({ employee, contributions }: Props) {
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[900px] text-sm">
+                                <table className="w-full min-w-[1200px] text-sm">
                                     <thead>
                                         <tr className="border-b text-left">
                                             <th className="px-3 py-3 font-medium">Contribution date</th>
                                             <th className="px-3 py-3 font-medium">Payroll cutoff</th>
+                                            <th className="px-3 py-3 text-right font-medium">Monthly compensation</th>
                                             <th className="px-3 py-3 text-right font-medium">MSC</th>
                                             <th className="px-3 py-3 text-right font-medium">Employee SS</th>
                                             <th className="px-3 py-3 text-right font-medium">Employee MPF</th>
-                                            <th className="px-3 py-3 text-right font-medium">Employee total</th>
-                                            <th className="px-3 py-3 text-right font-medium">Employer total</th>
+                                            <th className="px-3 py-3 text-right font-medium">Employee share</th>
+                                            <th className="px-3 py-3 text-right font-medium">Employer SS</th>
+                                            <th className="px-3 py-3 text-right font-medium">Employer MPF</th>
+                                            <th className="px-3 py-3 text-right font-medium">Employer EC</th>
+                                            <th className="px-3 py-3 text-right font-medium">Employer share</th>
+                                            <th className="px-3 py-3 text-right font-medium">Total remittance</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {contributions.map((item) => (
-                                            <tr key={item.id} className="border-b last:border-0">
-                                                <td className="px-3 py-3 font-medium">{date(item.contribution_date)}</td>
-                                                <td className="px-3 py-3">
-                                                    {item.payroll_run
-                                                        ? `${date(item.payroll_run.cutoff_start)} – ${date(item.payroll_run.cutoff_end)}`
-                                                        : '—'}
-                                                </td>
-                                                <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.monthly_salary_credit))}</td>
-                                                <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employee_regular_ss))}</td>
-                                                <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employee_mpf))}</td>
-                                                <td className="px-3 py-3 text-right font-mono font-semibold">{peso.format(Number(item.employee_total))}</td>
-                                                <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employer_total))}</td>
-                                            </tr>
-                                        ))}
+                                        {contributions.map((item) => {
+                                            const employeeShare = Number(item.employee_total)
+                                            const employerShare = Number(item.employer_total)
+
+                                            return (
+                                                <tr key={item.id} className="border-b last:border-0">
+                                                    <td className="px-3 py-3 font-medium">{date(item.contribution_date)}</td>
+                                                    <td className="px-3 py-3">
+                                                        {item.payroll_run
+                                                            ? `${date(item.payroll_run.cutoff_start)} – ${date(item.payroll_run.cutoff_end)}`
+                                                            : '—'}
+                                                    </td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.monthly_compensation))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.monthly_salary_credit))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employee_regular_ss))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employee_mpf))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono font-semibold">{peso.format(employeeShare)}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employer_regular_ss))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employer_mpf))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono">{peso.format(Number(item.employer_ec))}</td>
+                                                    <td className="px-3 py-3 text-right font-mono font-semibold">{peso.format(employerShare)}</td>
+                                                    <td className="px-3 py-3 text-right font-mono font-semibold">{peso.format(employeeShare + employerShare)}</td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
+                                    <tfoot>
+                                        <tr className="border-t bg-muted/30 font-semibold">
+                                            <td className="px-3 py-3" colSpan={6}>Totals</td>
+                                            <td className="px-3 py-3 text-right font-mono">{peso.format(employeeTotal)}</td>
+                                            <td className="px-3 py-3" colSpan={3}></td>
+                                            <td className="px-3 py-3 text-right font-mono">{peso.format(employerTotal)}</td>
+                                            <td className="px-3 py-3 text-right font-mono">{peso.format(totalRemittance)}</td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         )}
