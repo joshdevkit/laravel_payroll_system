@@ -9,7 +9,7 @@ class AttendanceCalculationResult
         private array $presentDates,
         private array $scheduledDates,
         private int $presentSegments,
-        private int $presentDays,
+        private float $presentDays,
         private int $scheduledWorkdays,
         private int $absentDays,
         private int $lateMinutes,
@@ -42,7 +42,7 @@ class AttendanceCalculationResult
         return $this->presentSegments;
     }
 
-    public function presentDays(): int
+    public function presentDays(): float
     {
         return $this->presentDays;
     }

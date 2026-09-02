@@ -6,8 +6,6 @@ use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
 use App\Models\PayrollSetting;
-use App\Services\Payroll\AttendanceCalculationResult;
-use App\Services\Payroll\NightDifferentialCalculator;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
@@ -27,18 +25,9 @@ class AttendanceCalculator
         float $hourlyRate
     ): AttendanceCalculationResult {
         $schedules = EmployeeSchedule::query()
-            ->where(
-                'employee_id',
-                $employee->id
-            )
-            ->whereBetween(
-                'work_date',
-                [$start, $end]
-            )
-            ->where(
-                'is_working_day',
-                true
-            )
+            ->where('employee_id', $employee->id)
+            ->whereBetween('work_date', [$start, $end])
+            ->where('is_working_day', true)
             ->orderBy('work_date')
             ->orderBy('segment_no')
             ->get();
@@ -48,10 +37,7 @@ class AttendanceCalculator
          * overnight attendance.
          */
         $attendance = Attendance::query()
-            ->where(
-                'employee_id',
-                $employee->id
-            )
+            ->where('employee_id', $employee->id)
             ->whereBetween(
                 'work_date',
                 [
@@ -89,8 +75,150 @@ class AttendanceCalculator
             (float) $settings->daily_work_hours
         );
 
-        $tardyPerMinute =
-            ($hourlyRate / 60);
+        $tardyPerMinute = $hourlyRate / 60;
+
+        /*
+         * ==========================================================
+         * SEPARATE DAY-FRACTION CALCULATION
+         * ==========================================================
+         *
+         * This is intentionally independent from:
+         *
+         * - tardy
+         * - undertime
+         * - overtime
+         * - NSD
+         * - payroll pay calculations
+         *
+         * Each attendance record contributes:
+         *
+         * actual minutes / daily working minutes
+         *
+         * The total for ONE calendar date is capped at 1.00.
+         *
+         * Example:
+         *
+         * 4 hours / 8 hours = 0.50 day
+         *
+         * 6 hours / 8 hours = 0.75 day
+         *
+         * 8 hours / 8 hours = 1.00 day
+         *
+         * ==========================================================
+         */
+
+        $dayFractionByDate = [];
+
+        foreach ($attendance as $record) {
+            if ($record->status !== 'present') {
+                continue;
+            }
+
+            if (! $record->time_in || ! $record->time_out) {
+                continue;
+            }
+
+            $attendanceDate = Carbon::parse(
+                $record->work_date
+            )->toDateString();
+
+            /*
+             * Only calculate day fractions for dates
+             * inside the payroll period.
+             */
+            if (
+                $attendanceDate < Carbon::parse($start)->toDateString()
+                ||
+                $attendanceDate > Carbon::parse($end)->toDateString()
+            ) {
+                continue;
+            }
+
+            $actual = $this->attendanceBounds(
+                $record->time_in,
+                $record->time_out
+            );
+
+            if (! $actual) {
+                continue;
+            }
+
+            /*
+             * IMPORTANT:
+             *
+             * This uses the ACTUAL TIME IN -> ACTUAL TIME OUT.
+             *
+             * It does NOT use:
+             *
+             * - late minutes
+             * - undertime
+             * - overtime
+             * - NSD
+             * - schedule overlap
+             * - break calculation
+             *
+             * This is purely for No. of Days.
+             */
+            $actualMinutes = $this->duration(
+                $actual['from'],
+                $actual['to']
+            );
+
+            if ($actualMinutes <= 0) {
+                continue;
+            }
+
+            /*
+             * Convert actual attendance into a day fraction.
+             *
+             * Example:
+             *
+             * daily_work_hours = 8
+             * actual = 4 hours
+             *
+             * 240 / 480 = 0.50
+             */
+            $fraction =
+                $actualMinutes
+                / ($dailyWorkHours * 60);
+
+            /*
+             * Add the attendance fraction to the date.
+             *
+             * Multiple attendance records on the same date
+             * are allowed.
+             */
+            $dayFractionByDate[$attendanceDate] =
+                ($dayFractionByDate[$attendanceDate] ?? 0)
+                + $fraction;
+        }
+
+        /*
+         * ==========================================================
+         * CAP EACH CALENDAR DATE AT 1.00
+         * ==========================================================
+         *
+         * This prevents:
+         *
+         * Segment 1 = 0.50
+         * Segment 2 = 0.50
+         *
+         * from becoming 2 days.
+         *
+         * The date can contribute a maximum of 1.00.
+         */
+        foreach ($dayFractionByDate as $date => $fraction) {
+            $dayFractionByDate[$date] = min(
+                1.0,
+                $fraction
+            );
+        }
+
+        /*
+         * ==========================================================
+         * NORMAL PAYROLL CALCULATIONS
+         * ==========================================================
+         */
 
         foreach ($schedules as $schedule) {
             $date = Carbon::parse(
@@ -120,9 +248,9 @@ class AttendanceCalculator
             );
 
             /*
-             * ==========================================
+             * ======================================================
              * MATCH ATTENDANCE
-             * ==========================================
+             * ======================================================
              */
             $record = null;
 
@@ -172,9 +300,9 @@ class AttendanceCalculator
             }
 
             /*
-             * ==========================================
+             * ======================================================
              * ABSENT SEGMENT
-             * ==========================================
+             * ======================================================
              */
             if (! $record) {
                 $details[] = [
@@ -273,9 +401,9 @@ class AttendanceCalculator
             $presentSegments++;
 
             /*
-             * ==========================================
+             * ======================================================
              * WORKED MINUTES
-             * ==========================================
+             * ======================================================
              */
             $workedMinutes = $this->overlap(
                 $actual['from'],
@@ -285,9 +413,9 @@ class AttendanceCalculator
             );
 
             /*
-             * ==========================================
+             * ======================================================
              * REGULAR MINUTES
-             * ==========================================
+             * ======================================================
              */
             $regularMinutes =
                 $this->calculateRegularPaidMinutes(
@@ -299,9 +427,9 @@ class AttendanceCalculator
                 );
 
             /*
-             * ==========================================
+             * ======================================================
              * TARDY
-             * ==========================================
+             * ======================================================
              */
             $rawLateSeconds =
                 $scheduleTime['from']->diffInSeconds(
@@ -329,9 +457,9 @@ class AttendanceCalculator
                 $late * $tardyPerMinute;
 
             /*
-             * ==========================================
+             * ======================================================
              * UNDERTIME
-             * ==========================================
+             * ======================================================
              */
             $undertime = max(
                 0,
@@ -342,20 +470,21 @@ class AttendanceCalculator
             );
 
             /*
-             * ==========================================
+             * ======================================================
              * OVERTIME
-             * ==========================================
+             * ======================================================
              */
-            $overtime = $this->overtimeCalculator->calculate(
-                $scheduleTime['to'],
-                $actual['to'],
-                $settings
-            );
+            $overtime =
+                $this->overtimeCalculator->calculate(
+                    $scheduleTime['to'],
+                    $actual['to'],
+                    $settings
+                );
 
             /*
-             * ==========================================
+             * ======================================================
              * NSD
-             * ==========================================
+             * ======================================================
              */
             $nsd =
                 $this->nightDifferentialCalculator->calculate(
@@ -370,9 +499,9 @@ class AttendanceCalculator
                 );
 
             /*
-             * ==========================================
+             * ======================================================
              * PAY
-             * ==========================================
+             * ======================================================
              */
             $segmentOvertimePay =
                 ($overtime / 60)
@@ -496,12 +625,30 @@ class AttendanceCalculator
             ];
         }
 
-        $presentDays =
-            count($presentDates);
+        /*
+         * ==========================================================
+         * FRACTIONAL PRESENT DAYS
+         * ==========================================================
+         *
+         * DO NOT use count($presentDates).
+         *
+         * This is now based exclusively on actual attendance
+         * duration.
+         */
+        $presentDays = array_sum(
+            $dayFractionByDate
+        );
 
+        /*
+         * Keep scheduled workdays as actual scheduled dates.
+         */
         $scheduledWorkdays =
             count($scheduledDates);
 
+        /*
+         * A date is absent only when there was no present
+         * attendance at all.
+         */
         $absentDays =
             count(
                 array_diff_key(
@@ -626,13 +773,13 @@ class AttendanceCalculator
 
         $from =
             $timeIn instanceof CarbonInterface
-            ? $timeIn->copy()
-            : Carbon::parse($timeIn);
+                ? $timeIn->copy()
+                : Carbon::parse($timeIn);
 
         $to =
             $timeOut instanceof CarbonInterface
-            ? $timeOut->copy()
-            : Carbon::parse($timeOut);
+                ? $timeOut->copy()
+                : Carbon::parse($timeOut);
 
         if (
             $to->lessThanOrEqualTo($from)

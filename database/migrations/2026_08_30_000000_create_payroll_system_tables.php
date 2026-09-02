@@ -1,3 +1,4 @@
+use Carbon\Carbon;
 <?php
 
 use Illuminate\Database\Migrations\Migration;
