@@ -9,6 +9,9 @@ use App\Models\SssContribution;
 use App\Models\SssContributionTable;
 use Carbon\Carbon;
 
+use Illuminate\Support\Facades\DB;
+use App\Models\PayrollItem;
+use App\Models\PayrollScheduleDetail;
 class SssContributionCalculator
 {
     /**

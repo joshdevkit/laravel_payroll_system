@@ -116,7 +116,6 @@ class EmployeeController extends Controller
         } else {
             $validated['daily_rate'] = null;
         }
-
         $employee->update($validated);
 
         return back()->with(
@@ -147,6 +146,9 @@ class EmployeeController extends Controller
             'pagibig_no' => ['nullable', 'string', 'max:255'],
             'tin' => ['nullable', 'string', 'max:255'],
             'date_hired' => ['required', 'date'],
+        ],[
+            'category_id.required' => 'Please select a department.',
+            'category_id.exists' => 'Department not selected',
         ]);
 
         if ($validated['rate_type'] === 'daily') {

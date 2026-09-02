@@ -6,6 +6,11 @@ use App\Models\Employee;
 use App\Models\PayrollRun;
 use Carbon\Carbon;
 
+use Illuminate\Support\Facades\DB;
+use App\Models\PayrollSetting;
+use App\Models\PayrollItem;
+use App\Models\SssContribution;
+use App\Models\PayrollScheduleDetail;
 class DeductionCalculator
 {
     public function __construct(
