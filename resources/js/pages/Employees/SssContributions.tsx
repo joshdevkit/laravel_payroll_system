@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react'
 import { ArrowLeft, CalendarDays, CircleDollarSign, FileText, Landmark } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -63,6 +64,18 @@ const cutoffLabel = (cutoff: Props['employee']['sss_deduction_cutoff']) => {
 }
 
 export default function SssContributions({ employee, contributions }: Props) {
+    const employeeTotal = contributions.reduce(
+        (sum, item) => sum + Number(item.employee_total),
+        0,
+    )
+
+    const employerTotal = contributions.reduce(
+        (sum, item) => sum + Number(item.employer_total),
+        0,
+    )
+
+    const totalRemittance = employeeTotal + employerTotal
+
     return (
         <AuthenticatedLayout>
             <div className="min-h-svh bg-background p-4 sm:p-6 lg:p-8">
