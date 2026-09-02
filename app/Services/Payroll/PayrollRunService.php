@@ -7,13 +7,14 @@ use App\Models\PayrollItem;
 use App\Models\PayrollRun;
 use App\Models\PayrollScheduleDetail;
 use App\Models\PayrollSetting;
-use App\Services\Payroll\PayrollCalculator;
+use App\Models\SssContribution;
 use Illuminate\Support\Facades\DB;
 
 class PayrollRunService
 {
     public function __construct(
         private PayrollCalculator $calculator,
+        private SssContributionCalculator $sssContributionCalculator,
     ) {
     }
 
@@ -123,11 +124,50 @@ class PayrollRunService
                 $calculation->item()
             );
 
+            $this->saveSssContribution(
+                $run,
+                $item,
+                $employee,
+            );
+
             $this->saveScheduleDetails(
                 $item,
                 $calculation->scheduleDetails()
             );
         }
+    }
+
+    /**
+     * Save the SSS contribution snapshot used by the payroll item.
+     */
+    private function saveSssContribution(
+        PayrollRun $run,
+        PayrollItem $item,
+        Employee $employee,
+    ): void {
+        $contribution = $this->sssContributionCalculator->calculate(
+            $employee,
+            $run,
+        );
+
+        if ($contribution === null) {
+            SssContribution::query()
+                ->where('payroll_item_id', $item->id)
+                ->delete();
+
+            return;
+        }
+
+        SssContribution::updateOrCreate(
+            [
+                'payroll_item_id' => $item->id,
+            ],
+            [
+                'employee_id' => $employee->id,
+                'payroll_run_id' => $run->id,
+                ...$contribution,
+            ]
+        );
     }
 
     /**
