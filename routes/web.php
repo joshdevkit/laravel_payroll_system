@@ -9,7 +9,6 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\SchedulingController;
-use App\Http\Controllers\SssDeductionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthenticationController::class, 'showLoginForm'])->name('login');
@@ -40,7 +39,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Keep the old URL working for existing bookmarks while the UI moves to /deductions.
     Route::redirect('/sss-deductions', '/deductions');
-    Route::resource('sss-deductions', SssDeductionController::class)->except(['index', 'show', 'create', 'edit']);
 
     Route::get('/holidays', [HolidayController::class, 'index'])->name('holidays.index');
     Route::post('/holidays', [HolidayController::class, 'store'])->name('holidays.store');
