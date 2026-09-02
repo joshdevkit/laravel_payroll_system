@@ -12,7 +12,7 @@ type EmployeeActionsMenuProps = {
 export function EmployeeActionsMenu({ employee, position, onClose, onEdit, onDelete }: EmployeeActionsMenuProps) {
     return (
         <div
-            className="fixed z-[9999] w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+            className="fixed z-[9999] w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
             style={{ top: position.top, left: position.left }}
             onClick={(event) => event.stopPropagation()}
         >
@@ -22,6 +22,13 @@ export function EmployeeActionsMenu({ employee, position, onClose, onEdit, onDel
                 onClick={onClose}
             >
                 View attendance
+            </Link>
+            <Link
+                href={`/employees/${employee.id}/sss-contributions`}
+                className="flex rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                onClick={onClose}
+            >
+                View contributions
             </Link>
             <button
                 type="button"
