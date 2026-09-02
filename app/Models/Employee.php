@@ -33,6 +33,7 @@ class Employee extends Model
         'basic_rate',
         'daily_rate',
         'sss_no',
+        'sss_deduction_cutoff',
         'philhealth_no',
         'pagibig_no',
         'tin',
@@ -72,6 +73,11 @@ class Employee extends Model
     public function sssDeductions(): HasMany
     {
         return $this->hasMany(SssDeduction::class);
+    }
+
+    public function sssContributions(): HasMany
+    {
+        return $this->hasMany(SssContribution::class);
     }
 
     public function category(): BelongsTo
