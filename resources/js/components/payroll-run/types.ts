@@ -26,6 +26,7 @@ export type PayrollEmployee = {
     rate_type: string;
     daily_rate?: string | number | null;
     basic_rate?: string | number | null;
+    sss_deduction_cutoff?: 'first' | 'second' | null;
 };
 
 export type PayrollItem = {
