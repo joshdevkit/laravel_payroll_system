@@ -1,17 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react'
+import { router } from '@inertiajs/react'
+import { HeartPulse, Landmark, ShieldCheck } from 'lucide-react'
 
-import { Navbar } from '@/components/layout/Navbar';
-import { FlashMessage } from '@/components/layout/FlashMessage';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/layout/Navbar'
+import { FlashMessage } from '@/components/layout/FlashMessage'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import {
     Table,
     TableBody,
@@ -19,33 +21,40 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from '@/components/ui/table';
-import { HeartPulse, Landmark, ShieldCheck } from 'lucide-react';
+} from '@/components/ui/table'
 
 type SssContributionTable = {
-    id: number;
-    effective_from: string;
-    effective_to?: string | null;
-    compensation_min: string | number;
-    compensation_max?: string | number | null;
-    monthly_salary_credit: string | number;
-    employee_regular_ss: string | number;
-    employee_mpf: string | number;
-    employee_total: string | number;
-    employer_regular_ss: string | number;
-    employer_mpf: string | number;
-    employer_ec: string | number;
-    employer_total: string | number;
-    source?: string | null;
-};
+    id: number
+    effective_from: string
+    effective_to?: string | null
+    compensation_min: string | number
+    compensation_max?: string | number | null
+    monthly_salary_credit: string | number
+    employee_regular_ss: string | number
+    employee_mpf: string | number
+    employee_total: string | number
+    employer_regular_ss: string | number
+    employer_mpf: string | number
+    employer_ec: string | number
+    employer_total: string | number
+    source?: string | null
+}
 
-type DeductionSection = 'sss' | 'philhealth' | 'pagibig';
+type SssEmployee = {
+    id: string
+    employee_id: string
+    full_name: string
+    sss_no: string | null
+    sss_deduction_cutoff: 'first' | 'second' | null
+}
+
+type DeductionSection = 'sss' | 'philhealth' | 'pagibig'
 
 const navItems: Array<{
-    id: DeductionSection;
-    label: string;
-    description: string;
-    icon: typeof ShieldCheck;
+    id: DeductionSection
+    label: string
+    description: string
+    icon: typeof ShieldCheck
 }> = [
     {
         id: 'sss',
@@ -65,37 +74,38 @@ const navItems: Array<{
         description: 'Home development mutual fund',
         icon: Landmark,
     },
-];
+]
 
 const money = (value: string | number) =>
     Number(value).toLocaleString('en-PH', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-    });
+    })
 
 const compensationRange = (item: SssContributionTable) => {
-    const min = money(item.compensation_min);
-    const max = item.compensation_max;
+    const min = money(item.compensation_min)
+    const max = item.compensation_max
 
     return max === null || max === undefined
         ? `₱${min} and above`
-        : `₱${min} – ₱${money(max)}`;
-};
+        : `₱${min} – ₱${money(max)}`
+}
 
 export default function Index({
+    employees,
     sssContributionTables,
 }: {
-    sssContributionTables: SssContributionTable[];
+    employees: SssEmployee[]
+    sssContributionTables: SssContributionTable[]
 }) {
-    const [section, setSection] = useState<DeductionSection>('sss');
-    const [search, setSearch] = useState('');
+    const [section, setSection] = useState<DeductionSection>('sss')
+    const [search, setSearch] = useState('')
+    const [savingEmployee, setSavingEmployee] = useState<string | null>(null)
 
     const filteredTables = useMemo(() => {
-        const term = search.trim().toLowerCase();
+        const term = search.trim().toLowerCase()
 
-        if (!term) {
-            return sssContributionTables;
-        }
+        if (!term) return sssContributionTables
 
         return sssContributionTables.filter((item) =>
             [
@@ -103,14 +113,27 @@ export default function Index({
                 item.monthly_salary_credit,
                 item.employee_total,
                 item.employer_total,
-            ].some((value) =>
-                String(value).toLowerCase().includes(term)
-            )
-        );
-    }, [search, sssContributionTables]);
+            ].some((value) => String(value).toLowerCase().includes(term)),
+        )
+    }, [search, sssContributionTables])
 
-    const active = navItems.find((item) => item.id === section)!;
-    const ActiveIcon = active.icon;
+    const active = navItems.find((item) => item.id === section)!
+    const ActiveIcon = active.icon
+
+    const updateCutoff = (employee: SssEmployee, cutoff: string) => {
+        setSavingEmployee(employee.id)
+
+        router.patch(
+            `/deductions/sss-cutoff/${employee.id}`,
+            {
+                sss_deduction_cutoff: cutoff || null,
+            },
+            {
+                preserveScroll: true,
+                onFinish: () => setSavingEmployee(null),
+            },
+        )
+    }
 
     return (
         <div className="min-h-svh bg-background font-sans">
@@ -126,9 +149,8 @@ export default function Index({
                         Deductions
                     </h1>
                     <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                        Configure statutory employee deductions in one place.
-                        SSS is calculated automatically from the contribution
-                        schedule instead of requiring a manual deduction amount.
+                        Configure statutory contributions and the cutoff where each
+                        employee's contribution is deducted.
                     </p>
                 </div>
 
@@ -143,8 +165,8 @@ export default function Index({
 
                             <div className="space-y-1">
                                 {navItems.map((item) => {
-                                    const Icon = item.icon;
-                                    const selected = item.id === section;
+                                    const Icon = item.icon
+                                    const selected = item.id === section
 
                                     return (
                                         <Button
@@ -164,7 +186,7 @@ export default function Index({
                                                 </span>
                                             </span>
                                         </Button>
-                                    );
+                                    )
                                 })}
                             </div>
                         </aside>
@@ -182,9 +204,10 @@ export default function Index({
                                                     <Badge>Automatic</Badge>
                                                 </div>
                                                 <CardDescription className="mt-1 max-w-2xl">
-                                                    Employee contributions are matched against the
-                                                    applicable SSS Monthly Salary Credit (MSC) bracket
-                                                    during payroll calculation.
+                                                    The SSS amount is calculated from the
+                                                    applicable contribution table. The employee
+                                                    decides whether the full monthly employee
+                                                    share is deducted on the first or second cutoff.
                                                 </CardDescription>
                                             </div>
 
@@ -206,6 +229,97 @@ export default function Index({
                                     </CardHeader>
 
                                     <CardContent className="mt-6 p-0">
+                                        <Card className="mb-6 border-dashed">
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="text-sm">
+                                                    Employee deduction cutoff
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    Choose where the employee's entire monthly SSS
+                                                    share will be deducted. Nothing is deducted until
+                                                    a cutoff is selected.
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="pt-0">
+                                                <div className="overflow-auto rounded-md border">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Employee</TableHead>
+                                                                <TableHead>SSS No.</TableHead>
+                                                                <TableHead>Deduction cutoff</TableHead>
+                                                                <TableHead>Status</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {employees.length === 0 ? (
+                                                                <TableRow>
+                                                                    <TableCell
+                                                                        colSpan={4}
+                                                                        className="h-24 text-center text-muted-foreground"
+                                                                    >
+                                                                        No employees with an SSS number.
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ) : (
+                                                                employees.map((employee) => (
+                                                                    <TableRow key={employee.id}>
+                                                                        <TableCell>
+                                                                            <div className="font-medium">
+                                                                                {employee.full_name}
+                                                                            </div>
+                                                                            <div className="text-xs text-muted-foreground">
+                                                                                {employee.employee_id}
+                                                                            </div>
+                                                                        </TableCell>
+                                                                        <TableCell className="font-mono text-xs">
+                                                                            {employee.sss_no}
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            <select
+                                                                                value={employee.sss_deduction_cutoff ?? ''}
+                                                                                disabled={savingEmployee === employee.id}
+                                                                                onChange={(event) =>
+                                                                                    updateCutoff(
+                                                                                        employee,
+                                                                                        event.target.value,
+                                                                                    )
+                                                                                }
+                                                                                className="border-input bg-background flex h-9 w-full min-w-40 rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                                            >
+                                                                                <option value="">
+                                                                                    Select cutoff
+                                                                                </option>
+                                                                                <option value="first">
+                                                                                    1st cutoff
+                                                                                </option>
+                                                                                <option value="second">
+                                                                                    2nd cutoff
+                                                                                </option>
+                                                                            </select>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            {employee.sss_deduction_cutoff ? (
+                                                                                <Badge variant="secondary">
+                                                                                    {employee.sss_deduction_cutoff === 'first'
+                                                                                        ? '1st cutoff'
+                                                                                        : '2nd cutoff'}
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <Badge variant="outline">
+                                                                                    Not configured
+                                                                                </Badge>
+                                                                            )}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                ))
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
                                         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                             <div>
                                                 <h2 className="text-sm font-semibold">
@@ -270,9 +384,8 @@ export default function Index({
                                         </div>
 
                                         <p className="mt-3 text-xs text-muted-foreground">
-                                            The employer EC amount is employer-paid and is not included
-                                            in the employee deduction. The payroll calculator applies
-                                            the employee share only.
+                                            The employer share and EC are employer-paid and are
+                                            never included in the employee's net-pay deduction.
                                         </p>
                                     </CardContent>
                                 </>
@@ -299,5 +412,5 @@ export default function Index({
                 </Card>
             </main>
         </div>
-    );
+    )
 }
