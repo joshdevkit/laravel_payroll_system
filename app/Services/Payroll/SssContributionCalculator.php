@@ -4,6 +4,7 @@ namespace App\Services\Payroll;
 
 use App\Models\Employee;
 use App\Models\PayrollRun;
+use App\Models\PayrollSetting;
 use App\Models\SssContribution;
 use App\Models\SssContributionTable;
 use Carbon\Carbon;
@@ -21,13 +22,14 @@ class SssContributionCalculator
     public function calculate(
         Employee $employee,
         PayrollRun $run,
+        PayrollSetting $settings,
     ): ?array {
         if (! $employee->sss_no) {
             return null;
         }
 
         $payDate = Carbon::parse($run->pay_date)->toDateString();
-        $monthlyCompensation = $this->monthlyCompensation($employee);
+        $monthlyCompensation = $this->monthlyCompensation($employee, $settings);
 
         $table = SssContributionTable::query()
             ->whereDate('effective_from', '<=', $payDate)
@@ -62,45 +64,30 @@ class SssContributionCalculator
         $monthlyEmployeeTotal = (float) $table->employee_total;
         $remaining = max(0, $monthlyEmployeeTotal - $alreadyDeducted);
 
-        if ($remaining <= 0) {
-            return [
-                'sss_contribution_table_id' => $table->id,
-                'contribution_date' => $payDate,
-                'monthly_compensation' => round($monthlyCompensation, 2),
-                'monthly_salary_credit' => (float) $table->monthly_salary_credit,
-                'employee_regular_ss' => 0,
-                'employee_mpf' => 0,
-                'employee_total' => 0,
-                'employer_regular_ss' => 0,
-                'employer_mpf' => 0,
-                'employer_ec' => 0,
-                'employer_total' => 0,
-                'effective_from' => $table->effective_from->toDateString(),
-                'source' => $table->source,
-            ];
-        }
-
         return [
             'sss_contribution_table_id' => $table->id,
             'contribution_date' => $payDate,
             'monthly_compensation' => round($monthlyCompensation, 2),
             'monthly_salary_credit' => (float) $table->monthly_salary_credit,
-            'employee_regular_ss' => (float) $table->employee_regular_ss,
-            'employee_mpf' => (float) $table->employee_mpf,
+            'employee_regular_ss' => $remaining > 0 ? (float) $table->employee_regular_ss : 0,
+            'employee_mpf' => $remaining > 0 ? (float) $table->employee_mpf : 0,
             'employee_total' => round($remaining, 2),
-            'employer_regular_ss' => (float) $table->employer_regular_ss,
-            'employer_mpf' => (float) $table->employer_mpf,
-            'employer_ec' => (float) $table->employer_ec,
-            'employer_total' => (float) $table->employer_total,
+            'employer_regular_ss' => $remaining > 0 ? (float) $table->employer_regular_ss : 0,
+            'employer_mpf' => $remaining > 0 ? (float) $table->employer_mpf : 0,
+            'employer_ec' => $remaining > 0 ? (float) $table->employer_ec : 0,
+            'employer_total' => $remaining > 0 ? (float) $table->employer_total : 0,
             'effective_from' => $table->effective_from->toDateString(),
             'source' => $table->source,
         ];
     }
 
-    private function monthlyCompensation(Employee $employee): float
-    {
+    private function monthlyCompensation(
+        Employee $employee,
+        PayrollSetting $settings,
+    ): float {
         if ($employee->rate_type === 'daily') {
-            return (float) ($employee->daily_rate ?? $employee->basic_rate ?? 0) * 26;
+            return (float) ($employee->daily_rate ?? $employee->basic_rate ?? 0)
+                * max(1, (int) $settings->monthly_daily_rate_divisor);
         }
 
         return (float) ($employee->basic_rate ?? 0);
