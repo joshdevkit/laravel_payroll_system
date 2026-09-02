@@ -121,7 +121,7 @@ class HolidayController extends Controller
         return $request->validate([
             'date' => ['required', 'date'],
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:regular,special_non_working'],
+            'type' => ['required', 'in:regular,special_non_working,local'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
     }
