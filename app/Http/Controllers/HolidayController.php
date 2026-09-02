@@ -25,6 +25,10 @@ class HolidayController extends Controller
         'Chinese New Year', 'Black Saturday', 'Christmas Eve',
     ];
 
+    private const LOCAL = [
+        'Local Holiday',
+    ];
+
     public function index(): Response
     {
         return inertia('Holidays/Index', [
@@ -111,6 +115,10 @@ class HolidayController extends Controller
 
         if (in_array($localName, self::SPECIAL, true) || in_array($name, self::SPECIAL, true)) {
             return 'special_non_working';
+        }
+
+        if(in_array($localName, self::LOCAL, true) || in_array($name, self::LOCAL, true)) {
+            return 'local';
         }
 
         return null;
