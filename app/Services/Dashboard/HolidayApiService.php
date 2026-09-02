@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Models\Holiday;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -9,12 +10,6 @@ class HolidayApiService
 {
     private const BASE_URL = 'https://date.nager.at/api/v3/PublicHolidays';
 
-    /**
-     * Return Philippine public holidays for a year.
-     *
-     * The external API is optional dashboard data. A failed request
-     * must never prevent the payroll application from loading.
-     */
     public function forYear(int $year): array
     {
         return Cache::remember(
@@ -38,6 +33,7 @@ class HolidayApiService
                                 ?? 'Holiday',
                             'date' => $holiday['date'] ?? null,
                             'type' => $holiday['types'][0] ?? null,
+                            'source' => 'national',
                         ])
                         ->filter(fn (array $holiday) => filled($holiday['date']))
                         ->values()
@@ -49,11 +45,37 @@ class HolidayApiService
         );
     }
 
-    public function upcoming(int $year, string $fromDate, int $limit = 5): array
+    public function localForYear(int $year): array
     {
-        return collect($this->forYear($year))
+        return Holiday::query()
+            ->whereYear('date', $year)
+            ->where('type', 'local')
+            ->get(['date', 'name', 'type'])
+            ->map(fn (Holiday $holiday) => [
+                'name' => $holiday->name,
+                'date' => $holiday->date?->format('Y-m-d'),
+                'type' => $holiday->type,
+                'source' => 'local',
+            ])
+            ->filter(fn (array $holiday) => filled($holiday['date']))
+            ->values()
+            ->all();
+    }
+
+    public function upcoming(
+        int $year,
+        string $fromDate,
+        int $limit = 5
+    ): array {
+        return collect()
+            ->merge($this->forYear($year))
             ->merge($this->forYear($year + 1))
-            ->filter(fn (array $holiday) => $holiday['date'] >= $fromDate)
+            ->merge($this->localForYear($year))
+            ->merge($this->localForYear($year + 1))
+            ->filter(fn (array $holiday) =>
+                filled($holiday['date']) &&
+                $holiday['date'] >= $fromDate
+            )
             ->sortBy('date')
             ->take($limit)
             ->values()
