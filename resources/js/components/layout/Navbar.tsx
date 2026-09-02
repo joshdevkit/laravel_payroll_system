@@ -18,7 +18,7 @@ const navItems = [
     { label: 'Employees', href: '/employees', icon: Users },
     { label: 'Scheduling', href: '/scheduling', icon: CalendarRange },
     { label: 'Payroll Register', href: '/payroll', icon: Wallet },
-    { label: 'SSS Deductions', href: '/sss-deductions', icon: ShieldCheck },
+    { label: 'Deduction', href: '/deductions', icon: ShieldCheck },
     { label: 'Holidays', href: '/holidays', icon: CalendarClock },
     { label: 'Settings', href: '/settings', icon: Settings2 },
 ];
