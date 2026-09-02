@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -58,9 +58,9 @@ return new class extends Migration
                 ? 0
                 : 5_250 + (($i - 1) * 500);
 
-            $maximum = $i === 60
-                ? null
-                : $minimum + 499.99;
+            $maximum = $i === 0
+                ? 5_249.99
+                : ($i === 60 ? null : $minimum + 499.99);
 
             $regularMsc = min($msc, 20_000);
             $mpfMsc = max(0, $msc - 20_000);
