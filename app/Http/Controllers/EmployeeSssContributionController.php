@@ -11,11 +11,13 @@ class EmployeeSssContributionController extends Controller
     {
         $contributions = $employee->sssContributions()
             ->with('payrollRun:id,cutoff_start,cutoff_end,pay_date,status')
+            ->with('contributionTable:id,effective_from,effective_to,compensation_min,compensation_max,monthly_salary_credit,employee_regular_ss,employee_mpf,employee_total,employer_regular_ss,employer_mpf,employer_ec,employer_total,source')
             ->orderByDesc('contribution_date')
             ->get([
                 'id',
                 'employee_id',
                 'payroll_run_id',
+                'sss_contribution_table_id',
                 'contribution_date',
                 'monthly_compensation',
                 'monthly_salary_credit',
