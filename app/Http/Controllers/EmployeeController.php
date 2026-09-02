@@ -8,6 +8,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
+use App\Models\PayrollSetting;
+use Carbon\Carbon;
+use App\Models\SssContributionTable;
+use App\Models\SssContribution;
 class EmployeeController extends Controller
 {
     public function index(): Response
