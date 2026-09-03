@@ -58,26 +58,39 @@ const deductionOthersOf = (item: PayrollItem): number =>
     numberValue(item.tax_deduction) +
     numberValue(item.leave_deduction);
 
+/*
+ * Mirrors PayrollRegisterTable:
+ * Others earnings = COLA + Overtime + Holiday + Night Shift.
+ */
 const othersEarningsOf = (item: PayrollItem): number =>
     colaOf(item) +
     numberValue(item.overtime_pay) +
     numberValue(item.holiday_pay) +
     numberValue(item.night_diff);
 
-const earningsOf = (item: PayrollItem): number => {
-    const grossEarnings =
-        numberValue(item.basic_pay) +
-        numberValue(item.overtime_pay) +
-        numberValue(item.holiday_pay) +
-        numberValue(item.night_diff) +
-        numberValue(item.leave_pay) +
-        numberValue(item.bonus);
+/*
+ * Payroll Review:
+ * Total Earnings = Basic Salary - Tardy.
+ */
+const totalEarningsOf = (item: PayrollItem): number =>
+    numberValue(item.basic_pay) -
+    numberValue(item.tardy_deduction);
 
-    return item.total_earnings != null
-        ? numberValue(item.total_earnings)
-        : grossEarnings;
-};
+/*
+ * Payroll Review:
+ * Total Gross = Total Earnings + COLA + OT + Holiday + NSD.
+ */
+const totalGrossOf = (item: PayrollItem): number =>
+    totalEarningsOf(item) +
+    colaOf(item) +
+    numberValue(item.overtime_pay) +
+    numberValue(item.holiday_pay) +
+    numberValue(item.night_diff);
 
+/*
+ * The review uses the stored total deductions when available.
+ * Otherwise it falls back to the displayed deduction components.
+ */
 const deductionsOf = (item: PayrollItem): number => {
     if (item.total_deductions != null) {
         return numberValue(item.total_deductions);
@@ -92,13 +105,12 @@ const deductionsOf = (item: PayrollItem): number => {
     );
 };
 
-const netPayOf = (item: PayrollItem): number => {
-    if (item.net_pay != null) {
-        return numberValue(item.net_pay);
-    }
-
-    return earningsOf(item) + colaOf(item) - deductionsOf(item);
-};
+/*
+ * Payroll Review:
+ * Net Pay = Total Gross Earnings - Total Deductions.
+ */
+const netPayOf = (item: PayrollItem): number =>
+    totalGrossOf(item) - deductionsOf(item);
 
 const rateOf = (item: PayrollItem): number =>
     item.employee?.rate_type === 'daily'
@@ -110,7 +122,7 @@ const rateOf = (item: PayrollItem): number =>
 
 /*
 |--------------------------------------------------------------------------
-| Excel layout — mirrors PayrollRegisterTable exactly
+| Excel layout — mirrors PayrollRegisterTable
 |--------------------------------------------------------------------------
 |
 | A-D  Employee information
@@ -182,9 +194,8 @@ export function exportPayrollRunToExcel(
     ];
 
     items.forEach((item, index) => {
-        const earnings = earningsOf(item);
-        const cola = colaOf(item);
-        const gross = earnings + cola;
+        const totalEarnings = totalEarningsOf(item);
+        const totalGross = totalGrossOf(item);
         const deductions = deductionsOf(item);
 
         rows.push([
@@ -197,12 +208,12 @@ export function exportPayrollRunToExcel(
             rateOf(item),
             numberValue(item.basic_pay),
             numberValue(item.tardy_deduction),
-            earnings,
-            cola,
+            totalEarnings,
+            colaOf(item),
             numberValue(item.overtime_pay),
             numberValue(item.holiday_pay),
             numberValue(item.night_diff),
-            gross,
+            totalGross,
 
             numberValue(item.philhealth_deduction),
             numberValue(item.pagibig_deduction),
@@ -233,8 +244,8 @@ export function exportPayrollRunToExcel(
     /*
      * Keep Excel formulas aligned with Payroll Review.
      *
-     * I = Basic Salary
-     * N = Total Earnings + COLA
+     * I = Basic Salary - Tardy
+     * N = Total Earnings + COLA + OT + Holiday + NSD
      * V = displayed deductions
      * W = COLA + OT + Holiday + Night Shift
      * X = Gross - Total Deductions
@@ -244,12 +255,12 @@ export function exportPayrollRunToExcel(
 
         worksheet[`I${row}`] = {
             t: 'n',
-            f: `G${row}`,
+            f: `G${row}-H${row}`,
         };
 
         worksheet[`N${row}`] = {
             t: 'n',
-            f: `I${row}+J${row}`,
+            f: `I${row}+J${row}+K${row}+L${row}+M${row}`,
         };
 
         worksheet[`V${row}`] = {
