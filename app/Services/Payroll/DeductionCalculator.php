@@ -11,6 +11,7 @@ use App\Models\PayrollSetting;
 use App\Models\PayrollItem;
 use App\Models\SssContribution;
 use App\Models\PayrollScheduleDetail;
+
 class DeductionCalculator
 {
     public function __construct(
@@ -24,6 +25,7 @@ class DeductionCalculator
         float $tardyDeduction
     ): DeductionCalculationResult {
         $payDate = Carbon::parse($run->pay_date)->toDateString();
+        $payrollCutoff = $this->payrollCutoff($run);
 
         $sssContribution = $this->sssContributionCalculator->calculate(
             $employee,
@@ -42,19 +44,25 @@ class DeductionCalculator
          * Pag-IBIG:
          * ₱10,000 × 2% = ₱200 employee contribution.
          *
-         * Only calculate the contribution when the employee
-         * has the corresponding government identification number.
+         * Both contributions are monthly deductions and are applied
+         * only on the employee's selected payroll cutoff.
          */
         $minimumSalaryCredit = 10000.00;
 
         $philhealth = 0.0;
         $pagibig = 0.0;
 
-        if (! empty($employee->philhealth_no)) {
+        if (
+            ! empty($employee->philhealth_no)
+            && $employee->philhealth_deduction_cutoff === $payrollCutoff
+        ) {
             $philhealth = ($minimumSalaryCredit * 0.025) / 2;
         }
 
-        if (! empty($employee->pagibig_no)) {
+        if (
+            ! empty($employee->pagibig_no)
+            && $employee->pagibig_deduction_cutoff === $payrollCutoff
+        ) {
             $pagibig = $minimumSalaryCredit * 0.02;
         }
 
@@ -82,5 +90,12 @@ class DeductionCalculator
             total: $total,
             sssContribution: $sssContribution,
         );
+    }
+
+    private function payrollCutoff(PayrollRun $run): string
+    {
+        return Carbon::parse($run->cutoff_end)->day <= 15
+            ? 'first'
+            : 'second';
     }
 }
