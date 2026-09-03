@@ -53,7 +53,16 @@ class SchedulingController extends Controller
 
     public function update(Request $request, EmployeeSchedule $schedule): RedirectResponse
     {
-        $data = $this->validatedData($request);
+         $data = $request->validate([
+            'employee_id' => ['required', 'uuid', 'exists:employees,id'],
+            'work_date' => ['required', 'date'],
+            'start_time' => ['required_if:is_working_day,true', 'date_format:H:i'],
+            'end_time' => ['required_if:is_working_day,true', 'date_format:H:i'],
+            'break_minutes' => ['nullable', 'integer', 'min:0'],
+            'is_working_day' => ['required', 'boolean'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
         $data['employee_id'] = $schedule->employee_id;
         $data['segment_no'] = $schedule->segment_no;
         $data['break_minutes'] = $this->resolveBreakMinutes($data);
