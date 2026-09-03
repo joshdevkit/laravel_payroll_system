@@ -48,8 +48,7 @@ type PayrollItemWithCola = PayrollItem & {
     cola?: number | string | null;
 };
 
-const numberValue = (value: unknown): number =>
-    Number(value ?? 0);
+const numberValue = (value: unknown): number => Number(value ?? 0);
 
 const colaOf = (item: PayrollItem): number =>
     numberValue((item as PayrollItemWithCola).cola);
@@ -172,8 +171,6 @@ const HEADER_ROW_3 = [
 
 const COLUMN_COUNT = HEADER_ROW_1.length;
 
-const column = (index: number) => XLSX.utils.encode_col(index);
-
 export function exportPayrollRunToExcel(
     run: PayrollRun,
     items: PayrollItem[],
@@ -234,15 +231,13 @@ export function exportPayrollRunToExcel(
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
     /*
-     * Keep Excel formulas aligned with the values shown in Payroll Review.
+     * Keep Excel formulas aligned with Payroll Review.
      *
      * I = Basic Salary
      * N = Total Earnings + COLA
-     * V = all displayed deductions
+     * V = displayed deductions
+     * W = COLA + OT + Holiday + Night Shift
      * X = Gross - Total Deductions
-     *
-     * W is intentionally a separate earnings summary:
-     * COLA + OT + Holiday + Night Shift.
      */
     items.forEach((_, index) => {
         const row = 4 + index;
@@ -303,7 +298,6 @@ export function exportPayrollRunToExcel(
             s: { r: 0, c: columnIndex },
             e: { r: 2, c: columnIndex },
         })),
-
         {
             s: { r: 0, c: 4 },
             e: { r: 0, c: 13 },
@@ -324,12 +318,10 @@ export function exportPayrollRunToExcel(
             s: { r: 0, c: 24 },
             e: { r: 2, c: 24 },
         },
-
         ...Array.from({ length: 10 }, (_, index) => ({
             s: { r: 1, c: 4 + index },
             e: { r: 2, c: 4 + index },
         })),
-
         {
             s: { r: 1, c: 14 },
             e: { r: 1, c: 16 },
@@ -456,7 +448,7 @@ export function exportPayrollRunToExcel(
         { wch: 13 },
         { wch: 11 },
         { wch: 15 },
-        { wch: 16 },
+        { wch: 13 },
         { wch: 16 },
         { wch: 16 },
     ];
