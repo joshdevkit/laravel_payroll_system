@@ -273,7 +273,9 @@ export function PayrollRegisterTable({ items }: Props) {
                                         : "-"}
                                 </td>
                                 <td className={td}>
-                                    {totalDeductionsForEmployee(item).toFixed(2)}
+                                    {totalDeductionsForEmployee(item).toFixed(
+                                        2,
+                                    )}
                                 </td>
 
                                 {/* OTHERS EARNINGS = COLA + OT + Holiday + Night Shift */}
@@ -350,7 +352,9 @@ export function PayrollRegisterTable({ items }: Props) {
                             )}
                         </td>
                         <td className={td}>
-                            {num(sum((i) => Number(i.total_deductions ?? 0)))}
+                            {sum((i) => totalDeductionsForEmployee(i)).toFixed(
+                                2,
+                            )}
                         </td>
 
                         {/* OTHERS EARNINGS TOTAL */}
