@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::table('payroll_runs', function (Blueprint $table) {
             $table->foreignId('category_id')
                 ->after('id')
+                ->nullable()
                 ->constrained('categories');
         });
     }
