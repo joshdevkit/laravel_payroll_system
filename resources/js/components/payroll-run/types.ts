@@ -61,6 +61,7 @@ export type PayrollItem = {
     net_pay: string | number;
     tardy_deduction: string | number;
     schedule_details: PayrollScheduleDetail[];
+    totalEarnings: string | number;
 };
 
 export type PayrollRun = {

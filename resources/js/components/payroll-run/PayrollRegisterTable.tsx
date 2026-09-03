@@ -28,6 +28,16 @@ export function PayrollRegisterTable({ items }: Props) {
         Number(item.overtime_pay ?? 0) +
         Number(item.holiday_pay ?? 0) +
         Number(item.night_diff ?? 0);
+    
+    const totalEarnings = (item: PayrollItem) =>
+        Number(item.basic_pay) - Number(item.tardy_deduction);
+    
+    const totalGross = (item: PayrollItem) =>
+        totalEarnings(item) +
+        Number(item.overtime_pay ?? 0) +
+        Number(item.holiday_pay ?? 0) +
+        Number(item.night_diff ?? 0) +
+        colaOf(item);
 
     return (
         <div className="hidden min-w-[1850px] md:block">
@@ -142,12 +152,12 @@ export function PayrollRegisterTable({ items }: Props) {
                                 <td className={td}>{rate ? peso(rate) : '-'}</td>
                                 <td className={td}>{num(item.basic_pay)}</td>
                                 <td className={td}>{tardyDeduction ? num(tardyDeduction) : '-'}</td>
-                                <td className={`${td} font-medium`}>{num(earnings)}</td>
+                                <td className={`${td} font-medium`}>{totalEarnings(item).toFixed(2)}</td>
                                 <td className={td}>{cola ? num(cola) : '-'}</td>
                                 <td className={td}>{item.overtime_pay ? num(item.overtime_pay) : '-'}</td>
                                 <td className={td}>{item.holiday_pay ? num(item.holiday_pay) : '-'}</td>
                                 <td className={td}>{item.night_diff ? num(item.night_diff) : '-'}</td>
-                                <td className={`${td} font-medium`}>{num(earnings + cola)}</td>
+                                <td className={`${td} font-medium`}>{totalGross(item).toFixed(2)}</td>
 
                                 <td className={td}>{item.philhealth_deduction ? num(item.philhealth_deduction) : '-'}</td>
                                 <td className={td}>{item.pagibig_deduction ? num(item.pagibig_deduction) : '-'}</td>
