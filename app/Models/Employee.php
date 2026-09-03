@@ -35,7 +35,9 @@ class Employee extends Model
         'sss_no',
         'sss_deduction_cutoff',
         'philhealth_no',
+        'philhealth_deduction_cutoff',
         'pagibig_no',
+        'pagibig_deduction_cutoff',
         'tin',
         'date_hired',
     ];
