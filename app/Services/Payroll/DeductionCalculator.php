@@ -32,9 +32,32 @@ class DeductionCalculator
 
         $sss = (float) ($sssContribution['employee_total'] ?? 0);
 
-        // These remain zero until their own contribution rules are implemented.
+        /*
+         * Government contribution minimum salary credit.
+         *
+         * PhilHealth:
+         * ₱10,000 × 2.5% = ₱250 total contribution.
+         * Employee share = 50% = ₱125.
+         *
+         * Pag-IBIG:
+         * ₱10,000 × 2% = ₱200 employee contribution.
+         *
+         * Only calculate the contribution when the employee
+         * has the corresponding government identification number.
+         */
+        $minimumSalaryCredit = 10000.00;
+
         $philhealth = 0.0;
         $pagibig = 0.0;
+
+        if (! empty($employee->philhealth_no)) {
+            $philhealth = ($minimumSalaryCredit * 0.025) / 2;
+        }
+
+        if (! empty($employee->pagibig_no)) {
+            $pagibig = $minimumSalaryCredit * 0.02;
+        }
+
         $tax = 0.0;
         $leave = 0.0;
         $other = 0.0;
