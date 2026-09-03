@@ -67,11 +67,11 @@ class PayrollCalculator
         );
 
         $holiday = $this->holidayCalculator->calculate(
+            $employee,
             $settings,
             $start,
             $end,
-            $rate,
-            $attendance->presentDates()
+            $rate
         );
 
         $totalEarnings =
