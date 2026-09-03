@@ -39,6 +39,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/deductions', [DeductionController::class, 'index'])->name('deductions.index');
     Route::patch('/deductions/sss-cutoff/{employee}', [DeductionController::class, 'updateSssCutoff'])->name('deductions.sss-cutoff.update');
+    Route::patch('/deductions/government-cutoffs/{employee}', [DeductionController::class, 'updateGovernmentCutoffs'])->name('deductions.government-cutoffs.update');
 
     // Keep the old URL working for existing bookmarks while the UI moves to /deductions.
     Route::redirect('/sss-deductions', '/deductions');
