@@ -10,6 +10,7 @@ export interface Employee {
     id: string
     employee_id: string
     category_id: number
+    category: Category
     full_name: string
     employment_type: 'regular' | 'probationary' | 'contractual'
     rate_type: 'daily' | 'monthly'

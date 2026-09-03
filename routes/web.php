@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionController;
 use App\Http\Controllers\EmployeeAttendanceController;
@@ -52,4 +53,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/settings', [PayrollSettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [PayrollSettingsController::class, 'update'])->name('settings.update');
+
+    Route::post('/categories', [CategoryController::class, 'store'])
+        ->name('categories.store');
+
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])
+        ->name('categories.update');
+
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+        ->name('categories.destroy');
 });

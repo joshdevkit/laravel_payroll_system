@@ -31,6 +31,7 @@ import {
 } from '@/components/scheduling/schedule-utils';
 import { FlashMessage } from '@/components/layout/FlashMessage';
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
+import { Header } from '@/components/layout/Header';
 
 type Employee = ScheduleEmployee & {
     employee_id?: string;
@@ -120,6 +121,7 @@ export default function Scheduling({
 
     return (
         <>
+            <Header title="Scheduling" />
             <AuthenticatedLayout>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>

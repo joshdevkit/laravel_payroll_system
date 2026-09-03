@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import { FlashMessage } from '@/components/layout/FlashMessage';
+import { Header } from '@/components/layout/Header';
 import { Navbar } from '@/components/layout/Navbar';
 import { PayrollSettingsForm, type PayrollSettings } from '@/components/settings/PayrollSettingsForm';
 
@@ -10,6 +11,7 @@ type SettingsPageProps = {
 export default function Index({ settings }: SettingsPageProps) {
     return (
         <>
+            <Header title="Settings" />
             <AuthenticatedLayout>
                 <div>
                     <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">System</p>

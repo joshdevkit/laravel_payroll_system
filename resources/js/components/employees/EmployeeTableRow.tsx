@@ -27,6 +27,7 @@ export function EmployeeTableRow({ employee, onMenuToggle }: EmployeeTableRowPro
         <tr className="border-b transition-colors hover:bg-muted/50">
             <td className="whitespace-nowrap p-2 align-middle font-mono tabular-nums">{employee.employee_id}</td>
             <td className="whitespace-nowrap p-2 align-middle font-medium">{employee.full_name}</td>
+            <td className="whitespace-nowrap p-2 align-middle font-medium">{employee.category.name}</td>
             <td className="whitespace-nowrap p-2 align-middle">
                 <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium">
                     {employmentTypeLabel[employee.employment_type]}

@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Download, Loader2, X } from 'lucide-react';
 import { router } from '@inertiajs/react';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
 import { PayrollRegisterTable } from '@/components/payroll-run/PayrollRegisterTable';
-import { FlashMessage } from '@/components/layout/FlashMessage';
-
 import type { PayrollRun } from '@/components/payroll-run/types';
 
 import {
@@ -27,6 +23,7 @@ export default function Show({
 }: {
     payrollRun: PayrollRun;
 }) {
+    // console.log('payrollRun:', payrollRun);
     const [confirming, setConfirming] = useState(false);
 
     useEffect(() => {

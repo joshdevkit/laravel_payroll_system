@@ -32,6 +32,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
+import { Header } from "@/components/layout/Header";
 
 type HolidayType = "regular" | "special_non_working" | "local";
 
@@ -150,6 +151,7 @@ export default function Holidays({
 
     return (
         <>
+            <Header title="Holidays" />
             <AuthenticatedLayout>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>

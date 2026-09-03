@@ -22,6 +22,7 @@ export type PayrollScheduleDetail = {
 export type PayrollEmployee = {
     id: string;
     employee_id: string;
+    category: Category;
     full_name: string;
     rate_type: string;
     daily_rate?: string | number | null;
@@ -72,7 +73,14 @@ export type PayrollRun = {
     pay_date: string;
     status: 'draft' | 'processing' | 'completed' | 'cancelled' | string;
     items: PayrollItem[];
+    category: Category;
 };
+
+
+export type Category = {
+    id: number | string;
+    name: string;
+}
 
 export const money = (value: string | number | null | undefined) =>
     `₱${Number(value ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

@@ -8,10 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
-use App\Models\PayrollSetting;
-use Carbon\Carbon;
-use App\Models\SssContributionTable;
-use App\Models\SssContribution;
+
 class EmployeeController extends Controller
 {
     public function index(): Response
@@ -150,7 +147,7 @@ class EmployeeController extends Controller
             'pagibig_no' => ['nullable', 'string', 'max:255'],
             'tin' => ['nullable', 'string', 'max:255'],
             'date_hired' => ['required', 'date'],
-        ],[
+        ], [
             'category_id.required' => 'Please select a department.',
             'category_id.exists' => 'Department not selected',
         ]);

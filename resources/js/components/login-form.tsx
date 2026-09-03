@@ -79,12 +79,12 @@ export function LoginForm({
               Password
             </FieldLabel>
 
-            <a
+            {/* <a
               href="/forgot-password"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Forgot your password?
-            </a>
+            </a> */}
           </div>
 
           <Input
@@ -124,9 +124,9 @@ export function LoginForm({
           <Button
             variant="outline"
             type="button"
-            disabled
+             disabled={form.processing}
           >
-            Login with Google
+            {form.processing ? "Login with Google" : "Login with Google"}
           </Button>
         </Field>
       </FieldGroup>

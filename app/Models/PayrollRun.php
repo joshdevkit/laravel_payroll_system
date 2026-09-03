@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 use App\Models\PayrollItem;
+use App\Models\Category;
 class PayrollRun extends Model
 {
     use HasFactory;
@@ -19,6 +20,7 @@ class PayrollRun extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'category_id',
         'cutoff_start',
         'cutoff_end',
         'pay_date',
@@ -51,6 +53,13 @@ class PayrollRun extends Model
     {
         return $this->hasMany(
             PayrollItem::class
+        );
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(
+            Category::class
         );
     }
 }

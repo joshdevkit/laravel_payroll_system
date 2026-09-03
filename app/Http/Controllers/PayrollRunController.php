@@ -8,15 +8,20 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
+use App\Models\Category;
 class PayrollRunController extends Controller
 {
     public function index(): Response
     {
         return inertia('PayrollRuns/Index', [
             'payrollRuns' => PayrollRun::query()
+                ->with('category')
                 ->withCount('items')
                 ->orderByDesc('pay_date')
                 ->orderByDesc('created_at')
+                ->get(),
+            'categories' => Category::query()->select(['id', 'name'])
+                ->orderBy('name')
                 ->get(),
         ]);
     }
@@ -26,6 +31,11 @@ class PayrollRunController extends Controller
         PayrollRunService $service
     ): RedirectResponse {
         $validated = $request->validate([
+            'category_id' => [
+                'required',
+                'exists:categories,id',
+            ],
+
             'cutoff_start' => [
                 'required',
                 'date',
@@ -44,6 +54,7 @@ class PayrollRunController extends Controller
         ]);
 
         $service->createDraft(
+            $validated['category_id'],
             $validated['cutoff_start'],
             $validated['cutoff_end'],
             $validated['pay_date'],
@@ -72,6 +83,8 @@ class PayrollRunController extends Controller
         $payrollRun = $service->ensureItems(
             $payrollRun
         );
+
+        // dd($payrollRun);
 
         return inertia(
             'PayrollRuns/Show',

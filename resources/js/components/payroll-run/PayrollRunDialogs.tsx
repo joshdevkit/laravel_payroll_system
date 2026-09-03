@@ -9,11 +9,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Trash2 } from "lucide-react";
-import type { PayrollRun } from "./types";
+import type { Category, PayrollRun } from "./types";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
 
 export function CreatePayrollRunDialog({
     open,
     onOpenChange,
+    categories,
+    selectedCategory,
+    onCategoryChange,
     cutoffStart,
     cutoffEnd,
     payDate,
@@ -25,6 +35,9 @@ export function CreatePayrollRunDialog({
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    categories: Category[];
+    selectedCategory: Category | null;
+    onCategoryChange: (category: Category | null) => void;
     cutoffStart: string;
     cutoffEnd: string;
     payDate: string;
@@ -47,6 +60,37 @@ export function CreatePayrollRunDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
+                    <label className="grid gap-2 text-sm font-medium">
+                        Department
+                        <Select
+                            value={selectedCategory?.id.toString() ?? ""}
+                            onValueChange={(value) => {
+                                const category = categories.find(
+                                    (category) =>
+                                        category.id.toString() === value,
+                                );
+
+                                onCategoryChange(category ?? null);
+                            }}
+                        >
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a department">
+                                    {selectedCategory?.name}
+                                </SelectValue>
+                            </SelectTrigger>
+
+                            <SelectContent>
+                                {categories.map((category) => (
+                                    <SelectItem
+                                        key={category.id}
+                                        value={category.id.toString()}
+                                    >
+                                        {category.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </label>
                     <label className="grid gap-2 text-sm font-medium">
                         Cutoff start
                         <Input

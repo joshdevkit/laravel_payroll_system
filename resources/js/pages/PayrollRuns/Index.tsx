@@ -1,49 +1,45 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { router } from "@inertiajs/react";
 
-import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
-import { Button } from '@/components/ui/button';
-import { PayrollRunStats } from '@/components/payroll-run/PayrollRunStats';
-import { PayrollRunHistory } from '@/components/payroll-run/PayrollRunHistory';
+import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
+import { Button } from "@/components/ui/button";
+import { PayrollRunStats } from "@/components/payroll-run/PayrollRunStats";
+import { PayrollRunHistory } from "@/components/payroll-run/PayrollRunHistory";
 import {
     CreatePayrollRunDialog,
     DeletePayrollRunDialog,
-} from '@/components/payroll-run/PayrollRunDialogs';
-import type { PayrollRun } from '@/components/payroll-run/types';
-import { Header } from '@/components/layout/Header';
+} from "@/components/payroll-run/PayrollRunDialogs";
+import type {Category, PayrollRun } from "@/components/payroll-run/types";
+import { Header } from "@/components/layout/Header";
 
 export default function PayrollRuns({
     payrollRuns,
+    categories
 }: {
     payrollRuns: (PayrollRun & { items_count?: number })[];
+    categories: Category[];
 }) {
     const [createOpen, setCreateOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<PayrollRun | null>(null);
-
-    const [cutoffStart, setCutoffStart] = useState('');
-    const [cutoffEnd, setCutoffEnd] = useState('');
-    const [payDate, setPayDate] = useState('');
-
+    const [cutoffStart, setCutoffStart] = useState("");
+    const [cutoffEnd, setCutoffEnd] = useState("");
+    const [payDate, setPayDate] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
-
     const create = () => {
-        if (
-            !cutoffStart ||
-            !cutoffEnd ||
-            !payDate ||
-            cutoffEnd < cutoffStart
-        ) {
+        if (!cutoffStart || !cutoffEnd || !payDate || cutoffEnd < cutoffStart) {
             return;
         }
 
         setSaving(true);
-
+        
         router.post(
-            '/payroll',
+            "/payroll",
             {
+                category_id: selectedCategory?.id,
                 cutoff_start: cutoffStart,
                 cutoff_end: cutoffEnd,
                 pay_date: payDate,
@@ -52,9 +48,9 @@ export default function PayrollRuns({
                 preserveScroll: true,
                 onSuccess: () => {
                     setCreateOpen(false);
-                    setCutoffStart('');
-                    setCutoffEnd('');
-                    setPayDate('');
+                    setCutoffStart("");
+                    setCutoffEnd("");
+                    setPayDate("");
                 },
                 onFinish: () => setSaving(false),
             },
@@ -79,12 +75,10 @@ export default function PayrollRuns({
     };
 
     const completed = payrollRuns.filter(
-        (run) => run.status === 'completed',
+        (run) => run.status === "completed",
     ).length;
 
-    const drafts = payrollRuns.filter(
-        (run) => run.status === 'draft',
-    ).length;
+    const drafts = payrollRuns.filter((run) => run.status === "draft").length;
 
     return (
         <>
@@ -105,8 +99,8 @@ export default function PayrollRuns({
                             </h1>
 
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Create, calculate, review, and confirm payroll for
-                                each cutoff period.
+                                Create, calculate, review, and confirm payroll
+                                for each cutoff period.
                             </p>
                         </div>
 
@@ -134,6 +128,9 @@ export default function PayrollRuns({
                     <CreatePayrollRunDialog
                         open={createOpen}
                         onOpenChange={setCreateOpen}
+                        categories={categories}
+                        selectedCategory={selectedCategory}
+                        onCategoryChange={setSelectedCategory}
                         cutoffStart={cutoffStart}
                         cutoffEnd={cutoffEnd}
                         payDate={payDate}

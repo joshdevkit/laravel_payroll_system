@@ -487,7 +487,7 @@ export function exportPayrollRunToExcel(
             item.employee?.full_name ??
                 '',
 
-            '-',
+           item.employee?.category?.name ??
 
             /*
              * E-N

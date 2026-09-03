@@ -216,7 +216,9 @@ export function PayrollRegisterTable({ items }: Props) {
                                         {item.employee?.full_name}
                                     </Link>
                                 </td>
-                                <td className={`${td} text-left`}>-</td>
+                                <td className={`${td} text-left`}>
+                                    {item.employee?.category?.name ?? "-"}
+                                </td>
 
                                 <td className={td}>{item.present_days}</td>
                                 <td className={td}>

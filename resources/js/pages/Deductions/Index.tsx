@@ -21,6 +21,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
+import { Header } from "@/components/layout/Header";
 
 type ContributionCutoff = "first" | "second" | null;
 
@@ -281,6 +282,8 @@ export default function Index({
     const ActiveIcon = active.icon;
 
     return (
+        <>
+        <Header title="Deductions" />
         <AuthenticatedLayout>
             <div>
                 <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary">
@@ -542,5 +545,6 @@ export default function Index({
                 </div>
             </Card>
         </AuthenticatedLayout>
+        </>
     );
 }

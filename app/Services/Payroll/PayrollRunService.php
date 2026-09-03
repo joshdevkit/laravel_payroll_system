@@ -15,18 +15,19 @@ class PayrollRunService
     public function __construct(
         private PayrollCalculator $calculator,
         private SssContributionCalculator $sssContributionCalculator,
-    ) {
-    }
+    ) {}
 
     /**
      * Create a new draft payroll run.
      */
     public function createDraft(
+        string $category_id,
         string $cutoffStart,
         string $cutoffEnd,
         string $payDate
     ): PayrollRun {
         return DB::transaction(function () use (
+            $category_id,
             $cutoffStart,
             $cutoffEnd,
             $payDate
@@ -35,6 +36,7 @@ class PayrollRunService
                 ->findOrFail(1);
 
             $run = PayrollRun::create([
+                'category_id' => $category_id,
                 'cutoff_start' => $cutoffStart,
                 'cutoff_end' => $cutoffEnd,
                 'pay_date' => $payDate,
@@ -62,7 +64,7 @@ class PayrollRunService
     ): PayrollRun {
         if ($run->status !== 'draft') {
             return $run->load([
-                'items.employee',
+                'items.employee.category',
                 'items.scheduleDetails',
             ]);
         }
@@ -77,7 +79,7 @@ class PayrollRunService
             );
 
             return $run->fresh([
-                'items.employee',
+                'items.employee.category',
                 'items.scheduleDetails',
             ]);
         });
@@ -90,7 +92,19 @@ class PayrollRunService
         PayrollRun $run,
         PayrollSetting $settings
     ): void {
+        $employeeIds = Employee::query()
+            ->where('category_id', $run->category_id)
+            ->pluck('id');
+
+        // Remove payroll items for employees who no longer
+        // belong to this payroll run's category.
+        PayrollItem::query()
+            ->where('payroll_run_id', $run->id)
+            ->whereNotIn('employee_id', $employeeIds)
+            ->delete();
+
         $employees = Employee::query()
+            ->whereIn('id', $employeeIds)
             ->orderBy('full_name')
             ->get();
 
@@ -112,7 +126,7 @@ class PayrollRunService
             $this->saveSssContribution(
                 $run,
                 $item,
-                $employee,
+                $employee
             );
 
             $this->saveScheduleDetails(
@@ -167,58 +181,58 @@ class PayrollRunService
         foreach ($details as $detail) {
             PayrollScheduleDetail::create([
                 'payroll_item_id' =>
-                    $item->id,
+                $item->id,
 
                 'work_date' =>
-                    $detail['date'],
+                $detail['date'],
 
                 'segment_no' =>
-                    $detail['segmentNo'],
+                $detail['segmentNo'],
 
                 'scheduled_start' =>
-                    $detail['scheduledStart'],
+                $detail['scheduledStart'],
 
                 'scheduled_end' =>
-                    $detail['scheduledEnd'],
+                $detail['scheduledEnd'],
 
                 'actual_in' =>
-                    $detail['actualIn'],
+                $detail['actualIn'],
 
                 'actual_out' =>
-                    $detail['actualOut'],
+                $detail['actualOut'],
 
                 'scheduled_minutes' =>
-                    $detail['scheduledMinutes'],
+                $detail['scheduledMinutes'],
 
                 'break_minutes' =>
-                    $detail['breakMinutes'],
+                $detail['breakMinutes'],
 
                 'worked_minutes' =>
-                    $detail['workedMinutes'],
+                $detail['workedMinutes'],
 
                 'late_minutes' =>
-                    $detail['lateMinutes'],
+                $detail['lateMinutes'],
 
                 'undertime_minutes' =>
-                    $detail['undertimeMinutes'],
+                $detail['undertimeMinutes'],
 
                 'overtime_minutes' =>
-                    $detail['overtimeMinutes'],
+                $detail['overtimeMinutes'],
 
                 'night_diff_minutes' =>
-                    $detail['nightDiffMinutes'],
+                $detail['nightDiffMinutes'],
 
                 'is_present' =>
-                    $detail['isPresent'],
+                $detail['isPresent'],
 
                 'overtime_pay' =>
-                    $detail['overtimePay'],
+                $detail['overtimePay'],
 
                 'night_diff_pay' =>
-                    $detail['nightDiffPay'],
+                $detail['nightDiffPay'],
 
                 'calculation_notes' =>
-                    $detail['calculationNotes'] ?? null,
+                $detail['calculationNotes'] ?? null,
             ]);
         }
     }
