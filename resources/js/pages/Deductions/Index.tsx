@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { HeartPulse, Landmark, ShieldCheck } from 'lucide-react'
-
-import { Navbar } from '@/components/layout/Navbar'
-import { FlashMessage } from '@/components/layout/FlashMessage'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
