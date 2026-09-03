@@ -20,8 +20,17 @@ class DeductionController extends Controller
                     'full_name',
                     'sss_no',
                     'sss_deduction_cutoff',
+                    'philhealth_no',
+                    'philhealth_deduction_cutoff',
+                    'pagibig_no',
+                    'pagibig_deduction_cutoff',
                 ])
-                ->whereNotNull('sss_no')
+                ->where(function ($query) {
+                    $query
+                        ->whereNotNull('sss_no')
+                        ->orWhereNotNull('philhealth_no')
+                        ->orWhereNotNull('pagibig_no');
+                })
                 ->orderBy('full_name')
                 ->get(),
             'sssContributionTables' => SssContributionTable::query()
@@ -49,6 +58,29 @@ class DeductionController extends Controller
             $validated['sss_deduction_cutoff'] === null
                 ? 'SSS deduction cutoff cleared.'
                 : 'SSS deduction cutoff updated.'
+        );
+    }
+
+    public function updateGovernmentCutoffs(
+        Request $request,
+        Employee $employee
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'philhealth_deduction_cutoff' => [
+                'nullable',
+                'in:first,second',
+            ],
+            'pagibig_deduction_cutoff' => [
+                'nullable',
+                'in:first,second',
+            ],
+        ]);
+
+        $employee->update($validated);
+
+        return back()->with(
+            'success',
+            'Government contribution deduction cutoffs updated.'
         );
     }
 }
