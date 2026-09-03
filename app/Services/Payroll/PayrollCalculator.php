@@ -74,12 +74,14 @@ class PayrollCalculator
             $rate
         );
 
+        // Tardy is a reduction of earnings, not a separate deduction.
         $totalEarnings =
             $basicPay
             + $attendance->overtimePay()
             + $holiday->pay()
             + $attendance->nightDiffPay()
-            + $leave->pay();
+            + $leave->pay()
+            - $attendance->tardyDeduction();
 
         $deductions = $this->deductionCalculator->calculate(
             $employee,
@@ -87,7 +89,8 @@ class PayrollCalculator
             $attendance->tardyDeduction()
         );
 
-        $totalDeductions = $deductions->total();
+        // Tardy has already been deducted from total earnings above.
+        $totalDeductions = $deductions->total() - $attendance->tardyDeduction();
         $netPay = $totalEarnings - $totalDeductions;
 
         $summary = [
