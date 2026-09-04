@@ -80,9 +80,7 @@ const cellStyle = (
         : undefined,
 
     alignment: {
-        horizontal: options.left
-            ? 'left'
-            : 'center',
+        horizontal: options.left ? 'left' : 'center',
         vertical: 'center',
     },
 
@@ -186,8 +184,6 @@ const totalGrossOf = (
 | Other Deductions
 |--------------------------------------------------------------------------
 |
-| Displayed under the "Others" deduction column.
-|
 | Others =
 |
 | Other Deductions
@@ -209,11 +205,7 @@ const deductionOthersOf = (
 | Total Deductions
 |--------------------------------------------------------------------------
 |
-| IMPORTANT:
-|
-| This is DISPLAY ONLY.
-|
-| It DOES NOT affect Total Net Earnings.
+| DISPLAY ONLY.
 |
 | Total Deductions =
 |
@@ -240,13 +232,7 @@ const totalDeductionsOf = (
 | Total Net Earnings
 |--------------------------------------------------------------------------
 |
-| IMPORTANT BUSINESS RULE
-|
-| Total Net Earnings is NOT:
-|
-| Total Gross - Total Deductions
-|
-| Instead:
+| BUSINESS RULE
 |
 | Total Net Earnings =
 |
@@ -256,9 +242,7 @@ const totalDeductionsOf = (
 | - SSS
 | - Cash Advance
 |
-| Therefore:
-|
-| X = N - O - P - Q - T
+| Total Deductions is NOT used here.
 |
 |--------------------------------------------------------------------------
 */
@@ -296,6 +280,11 @@ const rateOf = (
 |--------------------------------------------------------------------------
 |
 | A-D  Employee Information
+|
+| A    No.
+| B    ID No.
+| C    Employee Name
+| D    Department
 |
 | E-N  Earnings
 |
@@ -421,8 +410,7 @@ const HEADER_ROW_3 = [
     '',
 ];
 
-const COLUMN_COUNT =
-    HEADER_ROW_1.length;
+const COLUMN_COUNT = HEADER_ROW_1.length;
 
 /*
 |--------------------------------------------------------------------------
@@ -459,77 +447,99 @@ export function exportPayrollRunToExcel(
         const othersEarnings =
             othersEarningsOf(item);
 
-        /*
-         * IMPORTANT:
-         *
-         * Net Earnings:
-         *
-         * Gross
-         * - PhilHealth
-         * - Pag-IBIG
-         * - SSS
-         * - Cash Advance
-         */
         const netPay =
             netPayOf(item);
 
         rows.push([
             /*
-             * A-D
-             * Employee Information
+             * A - No.
              */
-
             index + 1,
 
+            /*
+             * B - Employee ID
+             */
             item.employee?.employee_id ??
                 item.employee_id,
 
+            /*
+             * C - Employee Name
+             */
             item.employee?.full_name ??
                 '',
 
-           item.employee?.category?.name ??
+            /*
+             * D - Department
+             *
+             * Display the category/department name.
+             */
+            item.employee?.category?.name ??
+                '',
 
             /*
-             * E-N
-             * Earnings
+             * E - No. of Days
+             *
+             * IMPORTANT:
+             * This is a NUMBER, not currency.
              */
-
             numberValue(
                 item.present_days,
             ),
 
+            /*
+             * F - Rate
+             */
             rateOf(item),
 
+            /*
+             * G - Basic Salary
+             */
             numberValue(
                 item.basic_pay,
             ),
 
+            /*
+             * H - Tardy
+             */
             numberValue(
                 item.tardy_deduction,
             ),
 
+            /*
+             * I - Total Earnings
+             */
             totalEarnings,
 
+            /*
+             * J - COLA
+             */
             colaOf(item),
 
+            /*
+             * K - Overtime Pay
+             */
             numberValue(
                 item.overtime_pay,
             ),
 
+            /*
+             * L - Holiday Pay
+             */
             numberValue(
                 item.holiday_pay,
             ),
 
+            /*
+             * M - Night Shift Pay
+             */
             numberValue(
                 item.night_diff,
             ),
 
-            totalGross,
-
             /*
-             * O-V
-             * Deductions
+             * N - Total Gross Earning
              */
+            totalGross,
 
             /*
              * O - PhilHealth
@@ -564,9 +574,6 @@ export function exportPayrollRunToExcel(
 
             /*
              * T - Cash Advance
-             *
-             * This is intentionally included
-             * in the Net Earnings calculation.
              */
             numberValue(
                 item.cash_advance,
@@ -581,8 +588,6 @@ export function exportPayrollRunToExcel(
              * V - Total Deductions
              *
              * DISPLAY ONLY.
-             *
-             * Does NOT affect X.
              */
             totalDeductions,
 
@@ -593,12 +598,6 @@ export function exportPayrollRunToExcel(
 
             /*
              * X - Total Net Earnings
-             *
-             * Gross
-             * - PhilHealth
-             * - Pag-IBIG
-             * - SSS
-             * - Cash Advance
              */
             netPay,
 
@@ -615,6 +614,7 @@ export function exportPayrollRunToExcel(
     |--------------------------------------------------------------------------
     */
 
+    // Excel row number.
     const footerRow =
         4 + items.length;
 
@@ -624,30 +624,30 @@ export function exportPayrollRunToExcel(
         '',
         '',
 
-        0, // E
-        0, // F
-        0, // G
-        0, // H
-        0, // I
-        0, // J
-        0, // K
-        0, // L
-        0, // M
-        0, // N
+        0, // E - No. of Days
+        0, // F - Rate
+        0, // G - Basic Salary
+        0, // H - Tardy
+        0, // I - Total Earnings
+        0, // J - COLA
+        0, // K - Overtime
+        0, // L - Holiday
+        0, // M - Night Shift
+        0, // N - Gross
 
-        0, // O
-        0, // P
-        0, // Q
-        0, // R
-        0, // S
-        0, // T
-        0, // U
-        0, // V
+        0, // O - PhilHealth
+        0, // P - Pag-IBIG
+        0, // Q - SSS
+        0, // R - SSS Loan
+        0, // S - Pag-IBIG Loan
+        0, // T - Cash Advance
+        0, // U - Others
+        0, // V - Total Deductions
 
-        0, // W
-        0, // X
+        0, // W - Others Earnings
+        0, // X - Net Earnings
 
-        '', // Y
+        '', // Y - Signature
     ]);
 
     const worksheet =
@@ -668,14 +668,13 @@ export function exportPayrollRunToExcel(
     |
     | X = N - O - P - Q - T
     |
-    | IMPORTANT:
-    |
-    | V is NOT used in X.
-    |
     |--------------------------------------------------------------------------
     */
 
     items.forEach((_, index) => {
+        /*
+         * Excel employee rows start at row 4.
+         */
         const row = 4 + index;
 
         /*
@@ -711,8 +710,6 @@ export function exportPayrollRunToExcel(
          * V - Total Deductions
          *
          * DISPLAY ONLY.
-         *
-         * This has no effect on X.
          */
         worksheet[`V${row}`] = {
             t: 'n',
@@ -729,8 +726,6 @@ export function exportPayrollRunToExcel(
 
         /*
          * W - Others Earnings
-         *
-         * COLA + OT + Holiday + NSD
          */
         worksheet[`W${row}`] = {
             t: 'n',
@@ -744,15 +739,11 @@ export function exportPayrollRunToExcel(
         /*
          * X - Total Net Earnings
          *
-         * BUSINESS RULE:
-         *
-         * Total Gross Earning
+         * Gross
          * - PhilHealth
          * - Pag-IBIG
          * - SSS
          * - Cash Advance
-         *
-         * V / Total Deductions is NOT used.
          */
         worksheet[`X${row}`] = {
             t: 'n',
@@ -1054,7 +1045,13 @@ export function exportPayrollRunToExcel(
     */
 
     items.forEach((_, index) => {
+        /*
+         * Zero-based worksheet row.
+         *
+         * Excel row 4 = zero-based row 3.
+         */
         const row = 3 + index;
+
         const shaded =
             index % 2 === 1;
 
@@ -1097,10 +1094,10 @@ export function exportPayrollRunToExcel(
                         columnIndex === 23,
 
                     /*
-                     * Left:
+                     * Left aligned:
                      *
-                     * Employee Name
-                     * Department
+                     * C = Employee Name
+                     * D = Department
                      */
                     left:
                         columnIndex === 2 ||
@@ -1120,6 +1117,10 @@ export function exportPayrollRunToExcel(
         columnIndex < COLUMN_COUNT;
         columnIndex += 1
     ) {
+        /*
+         * footerRow is an Excel row number.
+         * encode_cell() requires a zero-based index.
+         */
         const address =
             XLSX.utils.encode_cell({
                 r: footerRow - 1,
@@ -1139,7 +1140,44 @@ export function exportPayrollRunToExcel(
 
     /*
     |--------------------------------------------------------------------------
+    | Number Formatting
+    |--------------------------------------------------------------------------
+    */
+
+    /*
+     * E = No. of Days
+     *
+     * NEVER currency.
+     */
+    for (
+        let row = 4;
+        row < footerRow;
+        row += 1
+    ) {
+        const address =
+            `E${row}`;
+
+        if (worksheet[address]) {
+            worksheet[address].z =
+                '0.##';
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Currency Formatting
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | E is intentionally NOT included.
+    |
+    | E = No. of Days
+    | F = Rate
+    | G = Basic Salary
+    | ...
+    | X = Net Earnings
+    |
     |--------------------------------------------------------------------------
     */
 
@@ -1166,8 +1204,11 @@ export function exportPayrollRunToExcel(
     ];
 
     /*
-     * Employee Rows
-     */
+    |--------------------------------------------------------------------------
+    | Employee Currency Formatting
+    |--------------------------------------------------------------------------
+    */
+
     for (
         let row = 4;
         row < footerRow;
@@ -1187,8 +1228,25 @@ export function exportPayrollRunToExcel(
     }
 
     /*
-     * Footer
-     */
+    |--------------------------------------------------------------------------
+    | Footer No. of Days Formatting
+    |--------------------------------------------------------------------------
+    */
+
+    const footerDaysAddress =
+        `E${footerRow}`;
+
+    if (worksheet[footerDaysAddress]) {
+        worksheet[footerDaysAddress].z =
+            '0.##';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Footer Currency Formatting
+    |--------------------------------------------------------------------------
+    */
+
     currencyColumns.forEach(
         (columnName) => {
             const address =
@@ -1226,34 +1284,34 @@ export function exportPayrollRunToExcel(
     */
 
     worksheet['!cols'] = [
-        { wch: 5 },   // A No.
-        { wch: 10 },  // B ID
-        { wch: 24 },  // C Employee
-        { wch: 16 },  // D Department
+        { wch: 5 },   // A - No.
+        { wch: 10 },  // B - ID
+        { wch: 24 },  // C - Employee
+        { wch: 16 },  // D - Department
 
-        { wch: 10 },  // E Days
-        { wch: 10 },  // F Rate
-        { wch: 12 },  // G Basic
-        { wch: 10 },  // H Tardy
-        { wch: 13 },  // I Total Earnings
-        { wch: 9 },   // J COLA
-        { wch: 12 },  // K OT
-        { wch: 12 },  // L Holiday
-        { wch: 13 },  // M NSD
-        { wch: 16 },  // N Gross
+        { wch: 10 },  // E - Days
+        { wch: 10 },  // F - Rate
+        { wch: 12 },  // G - Basic
+        { wch: 10 },  // H - Tardy
+        { wch: 13 },  // I - Total Earnings
+        { wch: 9 },   // J - COLA
+        { wch: 12 },  // K - OT
+        { wch: 12 },  // L - Holiday
+        { wch: 13 },  // M - NSD
+        { wch: 16 },  // N - Gross
 
-        { wch: 12 },  // O PhilHealth
-        { wch: 12 },  // P Pag-IBIG
-        { wch: 10 },  // Q SSS
-        { wch: 10 },  // R SSS Loan
-        { wch: 12 },  // S Pag-IBIG Loan
-        { wch: 13 },  // T Cash Advance
-        { wch: 11 },  // U Others
-        { wch: 15 },  // V Total Deductions
+        { wch: 12 },  // O - PhilHealth
+        { wch: 12 },  // P - Pag-IBIG
+        { wch: 10 },  // Q - SSS
+        { wch: 10 },  // R - SSS Loan
+        { wch: 12 },  // S - Pag-IBIG Loan
+        { wch: 13 },  // T - Cash Advance
+        { wch: 11 },  // U - Others
+        { wch: 15 },  // V - Total Deductions
 
-        { wch: 13 },  // W Others
-        { wch: 16 },  // X Net Earnings
-        { wch: 16 },  // Y Signature
+        { wch: 13 },  // W - Others
+        { wch: 16 },  // X - Net Earnings
+        { wch: 16 },  // Y - Signature
     ];
 
     /*
