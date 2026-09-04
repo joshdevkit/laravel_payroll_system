@@ -128,7 +128,7 @@ export default function Index() {
         <>
             <Header
                 title="Dashboard"
-                description="View payroll summary, recent payroll runs, and upcoming holidays."
+                description="View payroll summary, recent payroll registered, and upcoming holidays."
             />
             <AuthenticatedLayout>
                 <>
@@ -188,17 +188,17 @@ export default function Index() {
                         <section className="overflow-hidden rounded-lg border bg-card text-card-foreground lg:col-span-2">
                             <div className="p-6">
                                 <h2 className="font-display text-base font-semibold">
-                                    Recent payroll runs
+                                    Recent payroll registered
                                 </h2>
                                 <p className="mt-1 text-xs text-muted-foreground">
-                                    Live data from payroll runs and payroll items.
+                                    Live data from payroll registered and payroll items.
                                 </p>
                             </div>
 
                             <div className="overflow-x-auto">
                                 {dashboard.recentPayrollRuns.length === 0 ? (
                                     <div className="border-t px-6 py-8 text-center text-sm text-muted-foreground">
-                                        No payroll runs have been created yet.
+                                        No payroll registered have been created yet.
                                     </div>
                                 ) : (
                                     <table className="w-full text-sm">
