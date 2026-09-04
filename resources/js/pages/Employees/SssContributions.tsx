@@ -1,12 +1,12 @@
-import { Link } from '@inertiajs/react'
-import { ArrowLeft, CalendarDays, CircleDollarSign, FileText, Landmark } from 'lucide-react'
+import { Link, useForm } from '@inertiajs/react'
+import { ArrowLeft, CalendarDays, CircleDollarSign, FileText, Landmark, Pencil } from 'lucide-react'
+import { FormEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout'
 import { Contribution, ContributionTable } from '@/types/auth'
-
-
 
 type Props = {
     employee: {
@@ -15,6 +15,7 @@ type Props = {
         full_name: string
         sss_no: string | null
         sss_deduction_cutoff: 'first' | 'second' | null
+        sss_msc_override: string | number | null
     }
     contributions: Contribution[]
 }
@@ -43,12 +44,10 @@ const cutoffLabel = (cutoff: Props['employee']['sss_deduction_cutoff']) => {
 
 const bracketLabel = (table: ContributionTable | null) => {
     if (!table) return 'Contribution table unavailable'
-
     const min = peso.format(number(table.compensation_min))
     const max = table.compensation_max == null
         ? 'and above'
         : peso.format(number(table.compensation_max))
-
     return `${min} – ${max}`
 }
 
@@ -64,6 +63,17 @@ const formatRate = (value: number | null) => {
 }
 
 export default function SssContributions({ employee, contributions }: Props) {
+    const [editingMsc, setEditingMsc] = useState(false)
+    const [mscValue, setMscValue] = useState(
+        employee.sss_msc_override == null ? '' : String(employee.sss_msc_override),
+    )
+
+    const mscForm = useForm<{ sss_msc_override: string | null }>({
+        sss_msc_override: employee.sss_msc_override == null
+            ? null
+            : String(employee.sss_msc_override),
+    })
+
     const employeeTotal = contributions.reduce(
         (sum, item) => sum + number(item.employee_total),
         0,
@@ -76,13 +86,41 @@ export default function SssContributions({ employee, contributions }: Props) {
 
     const totalRemittance = employeeTotal + employerTotal
 
+    const submitMsc = (event: FormEvent) => {
+        event.preventDefault()
+
+        const value = mscValue.trim()
+        mscForm.transform(() => ({
+            sss_msc_override: value === '' ? null : value,
+        }))
+
+        mscForm.patch(
+            `/employees/${employee.id}/sss-contributions/msc`,
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setEditingMsc(false)
+                },
+            },
+        )
+    }
+
+    const clearMsc = () => {
+        setMscValue('')
+        mscForm.transform(() => ({ sss_msc_override: null }))
+        mscForm.patch(
+            `/employees/${employee.id}/sss-contributions/msc`,
+            { preserveScroll: true, onSuccess: () => setEditingMsc(false) },
+        )
+    }
+
     return (
         <AuthenticatedLayout>
             <div className="min-h-svh bg-background p-4 sm:p-6 lg:p-8">
                 <div className="mx-auto max-w-6xl space-y-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="icon">
+                            <Button variant="outline" size="icon" asChild>
                                 <Link href="/employees" aria-label="Back to employees">
                                     <ArrowLeft className="size-4" />
                                 </Link>
@@ -91,9 +129,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                                     Employee
                                 </p>
-                                <h1 className="text-2xl font-bold tracking-tight">
-                                    SSS Contributions
-                                </h1>
+                                <h1 className="text-2xl font-bold tracking-tight">SSS Contributions</h1>
                             </div>
                         </div>
                     </div>
@@ -122,6 +158,93 @@ export default function SssContributions({ employee, contributions }: Props) {
                         </CardContent>
                     </Card>
 
+                    <Card>
+                        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                            <div>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <Landmark className="size-5" />
+                                    SSS Monthly Salary Credit (MSC)
+                                </CardTitle>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Leave this empty to use the automatic MSC calculation based on the employee's actual compensation.
+                                </p>
+                            </div>
+                            {!editingMsc && (
+                                <Button variant="outline" size="sm" onClick={() => setEditingMsc(true)}>
+                                    <Pencil className="mr-2 size-4" />
+                                    Edit MSC
+                                </Button>
+                            )}
+                        </CardHeader>
+                        <CardContent>
+                            {editingMsc ? (
+                                <form onSubmit={submitMsc} className="space-y-4">
+                                    <div className="grid gap-2 sm:max-w-md">
+                                        <label htmlFor="sss_msc_override" className="text-sm font-medium">
+                                            Manual MSC
+                                        </label>
+                                        <Input
+                                            id="sss_msc_override"
+                                            type="number"
+                                            min="5000"
+                                            max="35000"
+                                            step="500"
+                                            value={mscValue}
+                                            onChange={(event) => setMscValue(event.target.value)}
+                                            placeholder="Example: 5000"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Enter an MSC from ₱5,000 to ₱35,000 in ₱500 increments. This changes which existing SSS contribution-table row is used; it does not change the employee's salary.
+                                        </p>
+                                        {mscForm.errors.sss_msc_override && (
+                                            <p className="text-sm text-destructive">{mscForm.errors.sss_msc_override}</p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button type="submit" disabled={mscForm.processing}>
+                                            {mscForm.processing ? 'Saving...' : 'Save MSC'}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={mscForm.processing}
+                                            onClick={() => {
+                                                setMscValue('')
+                                                setEditingMsc(false)
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        {employee.sss_msc_override != null && (
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                disabled={mscForm.processing}
+                                                onClick={clearMsc}
+                                            >
+                                                Clear Override
+                                            </Button>
+                                        )}
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Current setting</p>
+                                        <p className="text-2xl font-bold font-mono">
+                                            {employee.sss_msc_override != null
+                                                ? peso.format(number(employee.sss_msc_override))
+                                                : 'Automatic'}
+                                        </p>
+                                    </div>
+                                    <Badge variant={employee.sss_msc_override != null ? 'default' : 'secondary'}>
+                                        {employee.sss_msc_override != null ? 'Manual MSC' : 'Automatic MSC'}
+                                    </Badge>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <div className="grid gap-4 sm:grid-cols-3">
                         <Card>
                             <CardContent className="flex items-center gap-3 p-5">
@@ -141,9 +264,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-xs text-muted-foreground">Employee deductions</p>
-                                    <p className="text-xl font-semibold">
-                                        {peso.format(employeeTotal)}
-                                    </p>
+                                    <p className="text-xl font-semibold">{peso.format(employeeTotal)}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -154,9 +275,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-xs text-muted-foreground">Employer contributions</p>
-                                    <p className="text-xl font-semibold">
-                                        {peso.format(employerTotal)}
-                                    </p>
+                                    <p className="text-xl font-semibold">{peso.format(employerTotal)}</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -197,18 +316,14 @@ export default function SssContributions({ employee, contributions }: Props) {
                                             <div className="border-b bg-muted/30 px-4 py-4 sm:px-5">
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                     <div>
-                                                        <p className="text-sm font-semibold">
-                                                            Contribution for {date(item.contribution_date)}
-                                                        </p>
+                                                        <p className="text-sm font-semibold">Contribution for {date(item.contribution_date)}</p>
                                                         <p className="text-xs text-muted-foreground">
                                                             {item.payroll_run
                                                                 ? `${date(item.payroll_run.cutoff_start)} – ${date(item.payroll_run.cutoff_end)}`
                                                                 : 'Payroll cutoff unavailable'}
                                                         </p>
                                                     </div>
-                                                    <Badge variant="secondary">
-                                                        {item.payroll_run?.status || 'Recorded'}
-                                                    </Badge>
+                                                    <Badge variant="secondary">{item.payroll_run?.status || 'Recorded'}</Badge>
                                                 </div>
                                             </div>
 
@@ -231,7 +346,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                             <span className="font-mono font-bold">{peso.format(msc)}</span>
                                                         </div>
                                                         <p className="rounded-lg bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
-                                                            The MSC shown here is the value used by the SSS contribution table for this contribution record. It is the base used for the employee and employer percentage calculations below.
+                                                            A manual MSC setting, when configured above, is used for future payroll calculations. Existing contribution records remain historical records.
                                                         </p>
                                                     </CardContent>
                                                 </Card>
@@ -286,7 +401,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                             <span className="font-mono font-semibold">{peso.format(employerEc)}</span>
                                                         </div>
                                                         <div className="flex justify-between gap-4 border-t pt-3">
-                                                            <span className="font-semibold">Total SSS remittance</span>
+                                                            <span className="font-semibold">Employer contribution</span>
                                                             <span className="font-mono font-bold">{peso.format(employerShare)}</span>
                                                         </div>
                                                     </CardContent>
@@ -315,10 +430,6 @@ export default function SssContributions({ employee, contributions }: Props) {
                                                     </CardContent>
                                                 </Card>
                                             </div>
-
-                                            {/* <div className="border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground sm:px-5">
-                                                Source: {item.source || 'SSS contribution table'} · Effective {date(item.effective_from)}
-                                            </div> */}
                                         </div>
                                     )
                                 })
