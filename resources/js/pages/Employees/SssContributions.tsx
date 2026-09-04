@@ -120,7 +120,7 @@ export default function SssContributions({ employee, contributions }: Props) {
                 <div className="mx-auto max-w-6xl space-y-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" size="icon" asChild>
+                            <Button variant="outline" size="icon">
                                 <Link href="/employees" aria-label="Back to employees">
                                     <ArrowLeft className="size-4" />
                                 </Link>
