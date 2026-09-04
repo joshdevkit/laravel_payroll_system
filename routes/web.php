@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/employees/{employee}/attendance/import', [EmployeeAttendanceController::class, 'import'])->name('employees.attendance.import');
     Route::delete('/employees/{employee}/attendance/{attendance}', [EmployeeAttendanceController::class, 'destroy'])->name('employees.attendance.destroy');
     Route::get('/employees/{employee}/sss-contributions', [EmployeeSssContributionController::class, 'index'])->name('employees.sss-contributions.index');
+    Route::patch('/employees/{employee}/sss-contributions/msc', [EmployeeSssContributionController::class, 'updateMsc'])->name('employees.sss-contributions.msc.update');
 
     Route::get('/scheduling', [SchedulingController::class, 'index'])->name('schedules.index');
     Route::post('/scheduling', [SchedulingController::class, 'store'])->name('schedules.store');
