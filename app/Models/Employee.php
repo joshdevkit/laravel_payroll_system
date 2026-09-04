@@ -34,6 +34,7 @@ class Employee extends Model
         'daily_rate',
         'sss_no',
         'sss_deduction_cutoff',
+        'sss_msc_override',
         'philhealth_no',
         'philhealth_deduction_cutoff',
         'pagibig_no',
@@ -45,6 +46,7 @@ class Employee extends Model
     protected $casts = [
         'basic_rate' => 'decimal:2',
         'daily_rate' => 'decimal:2',
+        'sss_msc_override' => 'decimal:2',
         'date_hired' => 'date:Y-m-d',
     ];
 
