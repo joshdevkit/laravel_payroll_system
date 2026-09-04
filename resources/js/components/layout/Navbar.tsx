@@ -4,11 +4,13 @@ import {
     CalendarClock,
     CalendarRange,
     LayoutDashboard,
+    LockKeyhole,
     LogOut,
     Moon,
     ShieldCheck,
     Sun,
     Settings2,
+    UserRound,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -68,15 +70,11 @@ export function Navbar() {
     };
 
     const isActive = (href: string) => {
-        const pathname = new URL(
-            url,
-            window.location.origin
-        ).pathname;
+        const pathname = new URL(url, window.location.origin).pathname;
 
         return (
             pathname === href ||
-            (href !== '/dashboard' &&
-                pathname.startsWith(href + '/'))
+            (href !== '/dashboard' && pathname.startsWith(href + '/'))
         );
     };
 
@@ -126,16 +124,33 @@ export function Navbar() {
                     </button>
 
                     {open && (
-                        <div className="absolute right-10 top-10 z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                        <div className="absolute right-10 top-10 z-50 w-52 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
                             <div className="px-3 py-2">
-                                <p className="text-sm font-medium">
-                                    My Account
-                                </p>
-
+                                <p className="text-sm font-medium">My Account</p>
                                 <p className="truncate text-xs text-muted-foreground">
                                     {auth?.user?.email || displayName}
                                 </p>
                             </div>
+
+                            <Link
+                                href="/profile"
+                                onClick={() => setOpen(false)}
+                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted"
+                            >
+                                <UserRound className="h-4 w-4" />
+                                Profile
+                            </Link>
+
+                            <Link
+                                href="/profile/password"
+                                onClick={() => setOpen(false)}
+                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted"
+                            >
+                                <LockKeyhole className="h-4 w-4" />
+                                Change Password
+                            </Link>
+
+                            <div className="my-1 border-t" />
 
                             <button
                                 type="button"
