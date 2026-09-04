@@ -10,6 +10,7 @@ use App\Http\Controllers\EmployeeSssContributionController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchedulingController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,12 @@ Route::post('/login', [AuthenticationController::class, 'login'])->name('login.s
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthenticationController::class, 'logout'])->name('logout');
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password.edit');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
     Route::resource('employees', EmployeeController::class);
 
     Route::get('/employees/{employee}/attendance', [EmployeeAttendanceController::class, 'index'])->name('employees.attendance.index');
