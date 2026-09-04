@@ -15,6 +15,10 @@ class SssContributionCalculator
      * Calculate the SSS contribution for the payroll cutoff selected by the
      * employee. SSS itself is a monthly contribution; the employee's full
      * monthly share is deducted only on the employee's configured cutoff.
+     *
+     * When sss_msc_override is set, the normal compensation-bracket lookup is
+     * bypassed and the contribution table row for the manually selected MSC
+     * is used instead. When it is null, the existing calculation is unchanged.
      */
     public function calculate(
         Employee $employee,
@@ -40,20 +44,33 @@ class SssContributionCalculator
 
         $payDate = Carbon::parse($run->pay_date)->toDateString();
         $monthlyCompensation = $this->monthlyCompensation($employee, $settings);
+        $mscOverride = $employee->sss_msc_override !== null
+            ? (float) $employee->sss_msc_override
+            : null;
 
-        $table = SssContributionTable::query()
+        $tableQuery = SssContributionTable::query()
             ->whereDate('effective_from', '<=', $payDate)
             ->where(function ($query) use ($payDate) {
                 $query
                     ->whereNull('effective_to')
                     ->orWhereDate('effective_to', '>=', $payDate);
-            })
-            ->where('compensation_min', '<=', $monthlyCompensation)
-            ->where(function ($query) use ($monthlyCompensation) {
-                $query
-                    ->whereNull('compensation_max')
-                    ->orWhere('compensation_max', '>=', $monthlyCompensation);
-            })
+            });
+
+        if ($mscOverride !== null) {
+            // Manual MSC: select the exact SSS table row for the configured MSC.
+            $tableQuery->where('monthly_salary_credit', $mscOverride);
+        } else {
+            // Existing behavior: determine MSC from actual monthly compensation.
+            $tableQuery
+                ->where('compensation_min', '<=', $monthlyCompensation)
+                ->where(function ($query) use ($monthlyCompensation) {
+                    $query
+                        ->whereNull('compensation_max')
+                        ->orWhere('compensation_max', '>=', $monthlyCompensation);
+                });
+        }
+
+        $table = $tableQuery
             ->orderByDesc('effective_from')
             ->orderBy('compensation_min')
             ->first();
