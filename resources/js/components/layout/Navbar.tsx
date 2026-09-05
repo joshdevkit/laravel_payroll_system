@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
         label: 'Scheduling',
         href: '/scheduling',
         icon: CalendarRange,
-        permission: 'schedules.view',
+        permission: 'scheduling.view',
     },
     {
         label: 'Payroll Register',

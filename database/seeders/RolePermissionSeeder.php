@@ -174,6 +174,7 @@ class RolePermissionSeeder extends Seeder
         | - View employees
         | - View attendance
         | - View schedules
+        | - Delete schedules
         | - Create schedules
         | - View holidays
         | - View departments
