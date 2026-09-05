@@ -202,7 +202,7 @@ class RolePermissionSeeder extends Seeder
             // Scheduling
             'scheduling.view',
             'scheduling.create',
-
+            'scheduling.delete',
             // Holidays
             'holidays.view',
 
