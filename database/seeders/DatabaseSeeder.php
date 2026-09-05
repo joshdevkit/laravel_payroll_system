@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             EmployeeSeeder::class,
             AugustPayrollTestSeederV2::class,
             RolePermissionSeeder::class,
+            UserSeedeer::class
         ]);
     }
 }
