@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { router, usePage } from "@inertiajs/react";
-import { Plus, UserRoundX } from "lucide-react";
+import { GitBranch, Plus, UserRoundX } from "lucide-react";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -14,16 +14,17 @@ import {
 import { EmployeePagination } from "@/components/employees/EmployeePagination";
 import { EmployeeSearch } from "@/components/employees/EmployeeSearch";
 import { EmployeeTable } from "@/components/employees/EmployeeTable";
-import { FlashMessage } from "@/components/layout/FlashMessage";
 import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import { Header } from "@/components/layout/Header";
 import { DepartmentDialog } from "@/components/employees/DepartmentDialog";
+import { Branch, BranchDialog } from "@/components/employees/BranchDialog";
 
 const PAGE_SIZE = 15;
 
 type PageProps = {
     employees: Employee[];
     categories: Category[];
+    branches: Branch[];
 };
 
 type MenuPosition = {
@@ -32,7 +33,7 @@ type MenuPosition = {
 };
 
 export default function Employees() {
-    const { employees, categories } = usePage<PageProps>().props;
+    const { employees, categories, branches } = usePage<PageProps>().props;
 
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -44,6 +45,8 @@ export default function Employees() {
     const [menuEmployee, setMenuEmployee] = useState<string | null>(null);
     const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
     const [departmentOpen, setDepartmentOpen] = useState(false);
+    const [branchOpen, setBranchOpen] = useState(false);
+
     const filtered = useMemo(
         () =>
             employees.filter((employee) =>
@@ -183,6 +186,14 @@ export default function Employees() {
                                 Departments
                             </Button>
 
+                            <Button
+                                variant="outline"
+                                onClick={() => setBranchOpen(true)}
+                            >
+                                <GitBranch className="mr-2 h-4 w-4" />
+                                Branches
+                            </Button>
+
                             <Button onClick={openAddDialog}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Add employee
@@ -271,12 +282,19 @@ export default function Employees() {
                         category={categories}
                         onOpenChange={setFormOpen}
                         employee={editingEmployee}
+                        branches={branches}
                     />
 
                     <DepartmentDialog
                         open={departmentOpen}
                         categories={categories}
                         onOpenChange={setDepartmentOpen}
+                    />
+
+                    <BranchDialog
+                        open={branchOpen}
+                        branches={branches}
+                        onOpenChange={setBranchOpen}
                     />
 
                     {deleteTarget && (

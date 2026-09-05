@@ -254,7 +254,7 @@ const netPayOf = (
     numberValue(item.philhealth_deduction) -
     numberValue(item.pagibig_deduction) -
     numberValue(item.sss_deduction) -
-    numberValue(item.cash_advance);
+    numberValue(item.cash_advance_deduction);
 
 /*
 |--------------------------------------------------------------------------
@@ -576,7 +576,7 @@ export function exportPayrollRunToExcel(
              * T - Cash Advance
              */
             numberValue(
-                item.cash_advance,
+                item.cash_advance_deduction,
             ),
 
             /*

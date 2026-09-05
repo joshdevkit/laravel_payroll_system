@@ -7,17 +7,23 @@ use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
-
+use App\Models\Branch;
+use App\Models\PayrollItem;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeController extends Controller
 {
     public function index(): Response
     {
         return inertia('Employees/Index', [
-            'employees' => Employee::query()->with('category')
+            'employees' => Employee::query()->with(['category', 'branch'])
                 ->orderBy('full_name')
                 ->get(),
             'categories' => Category::query()
+                ->select(['id', 'name'])
+                ->orderBy('name')
+                ->get(),
+            'branches' => Branch::query()
                 ->select(['id', 'name'])
                 ->orderBy('name')
                 ->get(),
@@ -44,11 +50,16 @@ class EmployeeController extends Controller
                 'max:50',
                 'unique:employees,employee_id,' . $employee->id,
             ],
-
             'category_id' => [
                 'required',
                 'integer',
                 'exists:categories,id',
+            ],
+
+            'branch_id' => [
+                'required',
+                'string',
+                'exists:branches,id'
             ],
 
             'full_name' => [
@@ -127,9 +138,80 @@ class EmployeeController extends Controller
 
     public function destroy(Employee $employee): RedirectResponse
     {
-        $employee->delete();
+        DB::transaction(function () use ($employee) {
 
-        return back()->with('success', 'Employee deleted successfully.');
+            /*
+         * ---------------------------------------------------------
+         * LOAN DEDUCTIONS
+         * ---------------------------------------------------------
+         *
+         * Delete the employee's loan deduction history first.
+         */
+            $employee->loanDeductions()->delete();
+
+            /*
+         * ---------------------------------------------------------
+         * LOANS / CASH ADVANCES
+         * ---------------------------------------------------------
+         *
+         * loan_deductions has a foreign key to
+         * loan_and_cash_advances.
+         */
+            $employee->loansAndCashAdvances()->delete();
+
+            /*
+         * ---------------------------------------------------------
+         * PAYROLL ITEMS
+         * ---------------------------------------------------------
+         *
+         * Payroll items have their own child records.
+         */
+            $employee->payrollItems()->each(function (PayrollItem $item) {
+
+                // Delete payroll schedule details
+                $item->scheduleDetails()->delete();
+
+                // Delete loan deductions attached to this payroll item
+                $item->loanDeductions()->delete();
+
+                // Delete the payroll item
+                $item->delete();
+            });
+
+            /*
+         * ---------------------------------------------------------
+         * SSS
+         * ---------------------------------------------------------
+         */
+            $employee->sssDeductions()->delete();
+            $employee->sssContributions()->delete();
+
+            /*
+         * ---------------------------------------------------------
+         * ATTENDANCE
+         * ---------------------------------------------------------
+         */
+            $employee->attendance()->delete();
+
+            /*
+         * ---------------------------------------------------------
+         * EMPLOYEE SCHEDULES
+         * ---------------------------------------------------------
+         */
+            $employee->schedules()->delete();
+
+            /*
+         * ---------------------------------------------------------
+         * EMPLOYEE
+         * ---------------------------------------------------------
+         */
+            $employee->delete();
+        });
+
+        return back()->with(
+            'success',
+            'Employee and all related records deleted successfully.'
+        );
     }
 
     private function validatedData(Request $request): array
@@ -137,6 +219,7 @@ class EmployeeController extends Controller
         $validated = $request->validate([
             'employee_id' => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'exists:categories,id'],
+            'branch_id' => ['required', 'exists:branches,id'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'employment_type' => ['required', 'in:regular,probationary,contractual'],
             'rate_type' => ['required', 'in:daily,monthly'],
@@ -150,6 +233,8 @@ class EmployeeController extends Controller
         ], [
             'category_id.required' => 'Please select a department.',
             'category_id.exists' => 'Department not selected',
+            'branches_id.required' => 'Branch is mandatory to saved',
+            'branches_id.exists' => 'Branch not selected',
         ]);
 
         if ($validated['rate_type'] === 'daily') {

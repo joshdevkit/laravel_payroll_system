@@ -5,7 +5,6 @@ namespace App\Services\Payroll;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\PayrollSetting;
-use App\Services\Payroll\HolidayCalculationResult;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -21,28 +20,43 @@ class HolidayCalculator
         $days = 0;
         $pay = 0.0;
 
-        $holidays = DB::table(
-            'holidays'
-        )
-            ->whereBetween(
-                'date',
-                [$start, $end]
-            )
+        /*
+         * Get all holidays inside the payroll cutoff.
+         */
+        $holidays = DB::table('holidays')
+            ->whereBetween('date', [$start, $end])
             ->get();
 
         foreach ($holidays as $holiday) {
-            $holidayDate =
-                Carbon::parse(
-                    $holiday->date
-                )->toDateString();
+            $holidayDate = Carbon::parse(
+                $holiday->date
+            )->toDateString();
 
             /*
-             * Holiday eligibility is based only on actual attendance.
+             * ======================================================
+             * HOLIDAY ATTENDANCE
+             * ======================================================
              *
-             * An employee who has a time-in on the holiday is considered
-             * to have worked the holiday, even if the attendance is only
-             * partial/half-day. The holiday premium is therefore not
-             * reduced based on the number of hours worked.
+             * The employee qualifies for the holiday premium if
+             * they have a PRESENT attendance record with a time_in
+             * on the exact holiday date.
+             *
+             * We intentionally do NOT calculate the holiday premium
+             * based on:
+             *
+             * - total hours worked
+             * - late minutes
+             * - undertime
+             * - overtime
+             * - break minutes
+             *
+             * Example:
+             *
+             * Time in  : 07:50 AM
+             * Time out : 05:02 PM
+             *
+             * The employee has time_in on the holiday, therefore
+             * they qualify for the holiday premium.
              */
             $workedHoliday = Attendance::query()
                 ->where('employee_id', $employee->id)
@@ -58,38 +72,82 @@ class HolidayCalculator
             $days++;
 
             /*
-             * Regular holidays use the configured regular multiplier.
-             * Special non-working holidays and local holidays use the
-             * configured special multiplier.
+             * ======================================================
+             * HOLIDAY MULTIPLIER
+             * ======================================================
              *
-             * The settings determine the actual rates; no holiday rate is
-             * hard-coded here. This calculator adds only the holiday
-             * premium because basic pay is calculated separately.
+             * Regular holiday:
+             *     2.0
+             *
+             * Special non-working holiday:
+             *     1.3
+             *
+             * The normal/basic daily pay is already calculated
+             * separately by PayrollCalculator.
+             *
+             * Therefore we only calculate the ADDITIONAL holiday
+             * premium here.
+             *
+             * Regular:
+             *
+             *     ₱500 × (2.0 - 1.0)
+             *     = ₱500 additional
+             *
+             * Special:
+             *
+             *     ₱500 × (1.3 - 1.0)
+             *     = ₱150 additional
              */
-            $multiplier =
-                $holiday->type === 'regular'
-                ? (float)
-                    $settings->holiday_regular_multiplier
-                : (float)
-                    $settings->holiday_special_multiplier;
+            $multiplier = $this->getHolidayMultiplier(
+                $holiday->type,
+                $settings
+            );
 
-            if (
-                (bool)
-                    $settings->holiday_pay_enabled
-            ) {
-                $pay +=
-                    $rate
-                    *
-                    max(
-                        0,
-                        $multiplier - 1
-                    );
+            if (! (bool) $settings->holiday_pay_enabled) {
+                continue;
             }
+
+            /*
+             * Only the premium portion is returned.
+             */
+            $premiumMultiplier = max(
+                0,
+                $multiplier - 1
+            );
+
+            $pay +=
+                $rate
+                * $premiumMultiplier;
         }
 
         return new HolidayCalculationResult(
             days: $days,
-            pay: $pay,
+            pay: $this->money($pay),
+        );
+    }
+
+    /**
+     * Get the configured multiplier for the holiday type.
+     */
+    private function getHolidayMultiplier(
+        string $holidayType,
+        PayrollSetting $settings
+    ): float {
+        return $holidayType === 'regular'
+            ? (float) $settings->holiday_regular_multiplier
+            : (float) $settings->holiday_special_multiplier;
+    }
+
+    /**
+     * Normalize money values to 2 decimal places.
+     */
+    private function money(float $value): float
+    {
+        return (float) number_format(
+            $value,
+            2,
+            '.',
+            ''
         );
     }
 }

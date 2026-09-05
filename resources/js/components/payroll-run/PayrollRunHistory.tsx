@@ -72,7 +72,7 @@ export function PayrollRunHistory({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Department</TableHead>
+                                    <TableHead>Branch</TableHead>
                                     <TableHead>Cutoff</TableHead>
                                     <TableHead>Pay date</TableHead>
                                     <TableHead>Status</TableHead>
@@ -85,7 +85,7 @@ export function PayrollRunHistory({
                                 {runs.map((run) => (
                                     <TableRow key={run.id}>
                                         <TableCell className="font-medium">
-                                            {run.category?.name || 'N/A'}
+                                            {run.branch?.name || 'N/A'}
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             {formatDate(run.cutoff_start)} –{" "}

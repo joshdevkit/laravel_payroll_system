@@ -10,15 +10,16 @@ import {
     CreatePayrollRunDialog,
     DeletePayrollRunDialog,
 } from "@/components/payroll-run/PayrollRunDialogs";
-import type {Category, PayrollRun } from "@/components/payroll-run/types";
+import type { PayrollRun } from "@/components/payroll-run/types";
 import { Header } from "@/components/layout/Header";
+import { Branch } from "@/components/employees/BranchDialog";
 
 export default function PayrollRuns({
     payrollRuns,
-    categories
+    branches,
 }: {
     payrollRuns: (PayrollRun & { items_count?: number })[];
-    categories: Category[];
+    branches: Branch[];
 }) {
     const [createOpen, setCreateOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -26,20 +27,21 @@ export default function PayrollRuns({
     const [cutoffStart, setCutoffStart] = useState("");
     const [cutoffEnd, setCutoffEnd] = useState("");
     const [payDate, setPayDate] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+    const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
     const create = () => {
         if (!cutoffStart || !cutoffEnd || !payDate || cutoffEnd < cutoffStart) {
             return;
         }
 
         setSaving(true);
-        
+
         router.post(
             "/payroll",
             {
-                category_id: selectedCategory?.id,
+                branch_id: selectedBranch?.id,
                 cutoff_start: cutoffStart,
                 cutoff_end: cutoffEnd,
                 pay_date: payDate,
@@ -51,6 +53,7 @@ export default function PayrollRuns({
                     setCutoffStart("");
                     setCutoffEnd("");
                     setPayDate("");
+                    setSelectedBranch(null);
                 },
                 onFinish: () => setSaving(false),
             },
@@ -128,9 +131,9 @@ export default function PayrollRuns({
                     <CreatePayrollRunDialog
                         open={createOpen}
                         onOpenChange={setCreateOpen}
-                        categories={categories}
-                        selectedCategory={selectedCategory}
-                        onCategoryChange={setSelectedCategory}
+                        branches={branches}
+                        selectedBranch={selectedBranch}
+                        onBranchChange={setSelectedBranch}
                         cutoffStart={cutoffStart}
                         cutoffEnd={cutoffEnd}
                         payDate={payDate}

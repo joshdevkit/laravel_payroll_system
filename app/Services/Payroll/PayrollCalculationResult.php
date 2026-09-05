@@ -8,8 +8,7 @@ class PayrollCalculationResult
         private array $item,
         private array $summary,
         private array $scheduleDetails,
-    ) {
-    }
+    ) {}
 
     public function item(): array
     {
@@ -19,6 +18,11 @@ class PayrollCalculationResult
     public function summary(): array
     {
         return $this->summary;
+    }
+
+    public function loanDeductions(): array
+    {
+        return $this->summary['loanDeductions'] ?? [];
     }
 
     public function scheduleDetails(): array

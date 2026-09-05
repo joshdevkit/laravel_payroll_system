@@ -1,156 +1,191 @@
-import { Link, useForm } from '@inertiajs/react'
-import { ArrowLeft, CalendarDays, CircleDollarSign, FileText, Landmark, Pencil } from 'lucide-react'
-import { FormEvent, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout'
-import { Contribution, ContributionTable } from '@/types/auth'
+import { Link } from "@inertiajs/react";
+import {
+    ArrowLeft,
+    CalendarDays,
+    CircleDollarSign,
+    FileText,
+    Landmark,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
+
+import { Contribution, ContributionTable } from "@/types/auth";
 
 type Props = {
     employee: {
-        id: string
-        employee_id: string
-        full_name: string
-        sss_no: string | null
-        sss_deduction_cutoff: 'first' | 'second' | null
-        sss_msc_override: string | number | null
-    }
-    contributions: Contribution[]
-}
+        id: string;
+        employee_id: string;
+        full_name: string;
+        sss_no: string | null;
+        sss_deduction_cutoff: "first" | "second" | null;
+        sss_msc_override: string | number | null;
+    };
+    contributions: Contribution[];
+};
 
-const peso = new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-})
+const peso = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+});
 
-const number = (value: string | number | null | undefined) => Number(value ?? 0)
+const number = (value: string | number | null | undefined) =>
+    Number(value ?? 0);
 
 const date = (value: string | null) => {
-    if (!value) return '—'
-    return new Intl.DateTimeFormat('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(new Date(`${value}T00:00:00`))
-}
+    if (!value) return "—";
 
-const cutoffLabel = (cutoff: Props['employee']['sss_deduction_cutoff']) => {
-    if (cutoff === 'first') return '1st cutoff'
-    if (cutoff === 'second') return '2nd cutoff'
-    return 'Not configured'
-}
+    return new Intl.DateTimeFormat("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    }).format(new Date(`${value}T00:00:00`));
+};
+
+const cutoffLabel = (
+    cutoff: Props["employee"]["sss_deduction_cutoff"],
+) => {
+    if (cutoff === "first") return "1st cutoff";
+    if (cutoff === "second") return "2nd cutoff";
+
+    return "Not configured";
+};
 
 const bracketLabel = (table: ContributionTable | null) => {
-    if (!table) return 'Contribution table unavailable'
-    const min = peso.format(number(table.compensation_min))
-    const max = table.compensation_max == null
-        ? 'and above'
-        : peso.format(number(table.compensation_max))
-    return `${min} – ${max}`
-}
+    if (!table) return "Contribution table unavailable";
 
-const rate = (amount: string | number, base: string | number) => {
-    const baseNumber = number(base)
-    if (baseNumber <= 0) return null
-    return (number(amount) / baseNumber) * 100
-}
+    const min = peso.format(number(table.compensation_min));
+
+    const max =
+        table.compensation_max == null
+            ? "and above"
+            : peso.format(number(table.compensation_max));
+
+    return `${min} – ${max}`;
+};
+
+const rate = (
+    amount: string | number,
+    base: string | number,
+) => {
+    const baseNumber = number(base);
+
+    if (baseNumber <= 0) return null;
+
+    return (number(amount) / baseNumber) * 100;
+};
 
 const formatRate = (value: number | null) => {
-    if (value === null || !Number.isFinite(value)) return '—'
-    return `${value.toFixed(2).replace(/\.00$/, '')}%`
-}
+    if (value === null || !Number.isFinite(value)) {
+        return "—";
+    }
 
-export default function SssContributions({ employee, contributions }: Props) {
-    const [editingMsc, setEditingMsc] = useState(false)
-    const [mscValue, setMscValue] = useState(
-        employee.sss_msc_override == null ? '' : String(employee.sss_msc_override),
-    )
+    return `${value.toFixed(2).replace(/\.00$/, "")}%`;
+};
 
-    const mscForm = useForm<{ sss_msc_override: string | null }>({
-        sss_msc_override: employee.sss_msc_override == null
-            ? null
-            : String(employee.sss_msc_override),
-    })
-
+export default function SssContributions({
+    employee,
+    contributions,
+}: Props) {
     const employeeTotal = contributions.reduce(
         (sum, item) => sum + number(item.employee_total),
         0,
-    )
+    );
 
     const employerTotal = contributions.reduce(
         (sum, item) => sum + number(item.employer_total),
         0,
-    )
+    );
 
-    const totalRemittance = employeeTotal + employerTotal
-
-    const submitMsc = (event: FormEvent) => {
-        event.preventDefault()
-
-        const value = mscValue.trim()
-        mscForm.transform(() => ({
-            sss_msc_override: value === '' ? null : value,
-        }))
-
-        mscForm.patch(
-            `/employees/${employee.id}/sss-contributions/msc`,
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setEditingMsc(false)
-                },
-            },
-        )
-    }
-
-    const clearMsc = () => {
-        setMscValue('')
-        mscForm.transform(() => ({ sss_msc_override: null }))
-        mscForm.patch(
-            `/employees/${employee.id}/sss-contributions/msc`,
-            { preserveScroll: true, onSuccess: () => setEditingMsc(false) },
-        )
-    }
+    const totalRemittance = employeeTotal + employerTotal;
 
     return (
         <AuthenticatedLayout>
             <div className="min-h-svh bg-background p-4 sm:p-6 lg:p-8">
                 <div className="mx-auto max-w-6xl space-y-6">
+                    {/* =====================================================
+                        HEADER
+                    ====================================================== */}
+
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                             <Button variant="outline" size="icon">
-                                <Link href="/employees" aria-label="Back to employees">
+                                <Link
+                                    href="/employees"
+                                    aria-label="Back to employees"
+                                >
                                     <ArrowLeft className="size-4" />
                                 </Link>
                             </Button>
+
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                                     Employee
                                 </p>
-                                <h1 className="text-2xl font-bold tracking-tight">SSS Contributions</h1>
+
+                                <h1 className="text-2xl font-bold tracking-tight">
+                                    SSS Contributions
+                                </h1>
                             </div>
                         </div>
                     </div>
+
+                    {/* =====================================================
+                        EMPLOYEE INFORMATION
+                    ====================================================== */}
 
                     <Card>
                         <CardContent className="p-5">
                             <div className="grid gap-5 sm:grid-cols-3">
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Employee</p>
-                                    <p className="mt-1 font-semibold">{employee.full_name}</p>
-                                    <p className="text-sm text-muted-foreground">{employee.employee_id}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Employee
+                                    </p>
+
+                                    <p className="mt-1 font-semibold">
+                                        {employee.full_name}
+                                    </p>
+
+                                    <p className="text-sm text-muted-foreground">
+                                        {employee.employee_id}
+                                    </p>
                                 </div>
+
                                 <div>
-                                    <p className="text-xs text-muted-foreground">SSS No.</p>
-                                    <p className="mt-1 font-medium">{employee.sss_no || 'Not provided'}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        SSS No.
+                                    </p>
+
+                                    <p className="mt-1 font-medium">
+                                        {employee.sss_no ||
+                                            "Not provided"}
+                                    </p>
                                 </div>
+
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Deduction cutoff</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Deduction cutoff
+                                    </p>
+
                                     <div className="mt-1">
-                                        <Badge variant={employee.sss_deduction_cutoff ? 'secondary' : 'outline'}>
-                                            {cutoffLabel(employee.sss_deduction_cutoff)}
+                                        <Badge
+                                            variant={
+                                                employee.sss_deduction_cutoff
+                                                    ? "secondary"
+                                                    : "outline"
+                                            }
+                                        >
+                                            {cutoffLabel(
+                                                employee.sss_deduction_cutoff,
+                                            )}
                                         </Badge>
                                     </div>
                                 </div>
@@ -158,92 +193,61 @@ export default function SssContributions({ employee, contributions }: Props) {
                         </CardContent>
                     </Card>
 
+                    {/* =====================================================
+                        SSS MSC
+                        READ ONLY
+                    ====================================================== */}
+
                     <Card>
-                        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-                            <div>
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    <Landmark className="size-5" />
-                                    SSS Monthly Salary Credit (MSC)
-                                </CardTitle>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Leave this empty to use the automatic MSC calculation based on the employee's actual compensation.
-                                </p>
-                            </div>
-                            {!editingMsc && (
-                                <Button variant="outline" size="sm" onClick={() => setEditingMsc(true)}>
-                                    <Pencil className="mr-2 size-4" />
-                                    Edit MSC
-                                </Button>
-                            )}
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <Landmark className="size-5" />
+                                SSS Monthly Salary Credit (MSC)
+                            </CardTitle>
+
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                The MSC used for SSS contribution
+                                calculations.
+                            </p>
                         </CardHeader>
+
                         <CardContent>
-                            {editingMsc ? (
-                                <form onSubmit={submitMsc} className="space-y-4">
-                                    <div className="grid gap-2 sm:max-w-md">
-                                        <label htmlFor="sss_msc_override" className="text-sm font-medium">
-                                            Manual MSC
-                                        </label>
-                                        <Input
-                                            id="sss_msc_override"
-                                            type="number"
-                                            min="5000"
-                                            max="35000"
-                                            step="500"
-                                            value={mscValue}
-                                            onChange={(event) => setMscValue(event.target.value)}
-                                            placeholder="Example: 5000"
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Enter an MSC from ₱5,000 to ₱35,000 in ₱500 increments. This changes which existing SSS contribution-table row is used; it does not change the employee's salary.
-                                        </p>
-                                        {mscForm.errors.sss_msc_override && (
-                                            <p className="text-sm text-destructive">{mscForm.errors.sss_msc_override}</p>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button type="submit" disabled={mscForm.processing}>
-                                            {mscForm.processing ? 'Saving...' : 'Save MSC'}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={mscForm.processing}
-                                            onClick={() => {
-                                                setMscValue('')
-                                                setEditingMsc(false)
-                                            }}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        {employee.sss_msc_override != null && (
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                disabled={mscForm.processing}
-                                                onClick={clearMsc}
-                                            >
-                                                Clear Override
-                                            </Button>
-                                        )}
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Current setting</p>
-                                        <p className="text-2xl font-bold font-mono">
-                                            {employee.sss_msc_override != null
-                                                ? peso.format(number(employee.sss_msc_override))
-                                                : 'Automatic'}
-                                        </p>
-                                    </div>
-                                    <Badge variant={employee.sss_msc_override != null ? 'default' : 'secondary'}>
-                                        {employee.sss_msc_override != null ? 'Manual MSC' : 'Automatic MSC'}
-                                    </Badge>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm text-muted-foreground">
+                                        Current setting
+                                    </p>
+
+                                    <p className="mt-1 font-mono text-2xl font-bold">
+                                        {employee.sss_msc_override !=
+                                        null
+                                            ? peso.format(
+                                                  number(
+                                                      employee.sss_msc_override,
+                                                  ),
+                                              )
+                                            : "Automatic"}
+                                    </p>
                                 </div>
-                            )}
+
+                                <Badge
+                                    variant={
+                                        employee.sss_msc_override != null
+                                            ? "default"
+                                            : "secondary"
+                                    }
+                                >
+                                    {employee.sss_msc_override != null
+                                        ? "Manual MSC"
+                                        : "Automatic MSC"}
+                                </Badge>
+                            </div>
                         </CardContent>
                     </Card>
+
+                    {/* =====================================================
+                        SUMMARY CARDS
+                    ====================================================== */}
 
                     <div className="grid gap-4 sm:grid-cols-3">
                         <Card>
@@ -251,35 +255,59 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                     <FileText className="size-5" />
                                 </div>
+
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Contribution records</p>
-                                    <p className="text-xl font-semibold">{contributions.length}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Contribution records
+                                    </p>
+
+                                    <p className="text-xl font-semibold">
+                                        {contributions.length}
+                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
+
                         <Card>
                             <CardContent className="flex items-center gap-3 p-5">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                     <CircleDollarSign className="size-5" />
                                 </div>
+
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Employee deductions</p>
-                                    <p className="text-xl font-semibold">{peso.format(employeeTotal)}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Employee deductions
+                                    </p>
+
+                                    <p className="text-xl font-semibold">
+                                        {peso.format(employeeTotal)}
+                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
+
                         <Card>
                             <CardContent className="flex items-center gap-3 p-5">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                     <Landmark className="size-5" />
                                 </div>
+
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Employer contributions</p>
-                                    <p className="text-xl font-semibold">{peso.format(employerTotal)}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Employer contributions
+                                    </p>
+
+                                    <p className="text-xl font-semibold">
+                                        {peso.format(employerTotal)}
+                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* =====================================================
+                        CONTRIBUTION HISTORY
+                    ====================================================== */}
 
                     <Card>
                         <CardHeader>
@@ -288,166 +316,425 @@ export default function SssContributions({ employee, contributions }: Props) {
                                 Contribution history
                             </CardTitle>
                         </CardHeader>
+
                         <CardContent className="space-y-5">
                             {contributions.length === 0 ? (
                                 <div className="rounded-lg border border-dashed p-10 text-center">
-                                    <p className="font-medium">No SSS contributions yet</p>
+                                    <p className="font-medium">
+                                        No SSS contributions yet
+                                    </p>
+
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        Contributions will appear here after payroll creates an SSS contribution record.
+                                        Contributions will appear here
+                                        after payroll creates an SSS
+                                        contribution record.
                                     </p>
                                 </div>
                             ) : (
                                 contributions.map((item) => {
-                                    const monthlyCompensation = number(item.monthly_compensation)
-                                    const msc = number(item.monthly_salary_credit)
-                                    const employeeSs = number(item.employee_regular_ss)
-                                    const employeeMpf = number(item.employee_mpf)
-                                    const employeeShare = number(item.employee_total)
-                                    const employerSs = number(item.employer_regular_ss)
-                                    const employerMpf = number(item.employer_mpf)
-                                    const employerEc = number(item.employer_ec)
-                                    const employerShare = number(item.employer_total)
-                                    const remittance = employeeShare + employerShare
-                                    const employeeSsRate = rate(employeeSs, msc)
-                                    const employerSsRate = rate(employerSs, msc)
+                                    const monthlyCompensation =
+                                        number(
+                                            item.monthly_compensation,
+                                        );
+
+                                    const msc = number(
+                                        item.monthly_salary_credit,
+                                    );
+
+                                    const employeeSs = number(
+                                        item.employee_regular_ss,
+                                    );
+
+                                    const employeeMpf = number(
+                                        item.employee_mpf,
+                                    );
+
+                                    const employeeShare = number(
+                                        item.employee_total,
+                                    );
+
+                                    const employerSs = number(
+                                        item.employer_regular_ss,
+                                    );
+
+                                    const employerMpf = number(
+                                        item.employer_mpf,
+                                    );
+
+                                    const employerEc = number(
+                                        item.employer_ec,
+                                    );
+
+                                    const employerShare = number(
+                                        item.employer_total,
+                                    );
+
+                                    const remittance =
+                                        employeeShare +
+                                        employerShare;
+
+                                    const employeeSsRate = rate(
+                                        employeeSs,
+                                        msc,
+                                    );
+
+                                    const employerSsRate = rate(
+                                        employerSs,
+                                        msc,
+                                    );
 
                                     return (
-                                        <div key={item.id} className="overflow-hidden rounded-xl border">
+                                        <div
+                                            key={item.id}
+                                            className="overflow-hidden rounded-xl border"
+                                        >
+                                            {/* Contribution Header */}
+
                                             <div className="border-b bg-muted/30 px-4 py-4 sm:px-5">
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                     <div>
-                                                        <p className="text-sm font-semibold">Contribution for {date(item.contribution_date)}</p>
+                                                        <p className="text-sm font-semibold">
+                                                            Contribution for{" "}
+                                                            {date(
+                                                                item.contribution_date,
+                                                            )}
+                                                        </p>
+
                                                         <p className="text-xs text-muted-foreground">
                                                             {item.payroll_run
-                                                                ? `${date(item.payroll_run.cutoff_start)} – ${date(item.payroll_run.cutoff_end)}`
-                                                                : 'Payroll cutoff unavailable'}
+                                                                ? `${date(
+                                                                      item
+                                                                          .payroll_run
+                                                                          .cutoff_start,
+                                                                  )} – ${date(
+                                                                      item
+                                                                          .payroll_run
+                                                                          .cutoff_end,
+                                                                  )}`
+                                                                : "Payroll cutoff unavailable"}
                                                         </p>
                                                     </div>
-                                                    <Badge variant="secondary">{item.payroll_run?.status || 'Recorded'}</Badge>
+
+                                                    <Badge variant="secondary">
+                                                        {item.payroll_run
+                                                            ?.status ||
+                                                            "Recorded"}
+                                                    </Badge>
                                                 </div>
                                             </div>
 
                                             <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
+                                                {/* =================================================
+                                                    MSC DETERMINATION
+                                                ================================================== */}
+
                                                 <Card className="shadow-none">
                                                     <CardHeader className="pb-3">
-                                                        <CardTitle className="text-sm">How the MSC was determined</CardTitle>
+                                                        <CardTitle className="text-sm">
+                                                            How the MSC was
+                                                            determined
+                                                        </CardTitle>
                                                     </CardHeader>
+
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="flex justify-between gap-4">
-                                                            <span className="text-muted-foreground">Total earnings</span>
-                                                            <span className="font-mono font-semibold">{peso.format(monthlyCompensation)}</span>
+                                                            <span className="text-muted-foreground">
+                                                                Total earnings
+                                                            </span>
+
+                                                            <span className="font-mono font-semibold">
+                                                                {peso.format(
+                                                                    monthlyCompensation,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="flex justify-between gap-4">
-                                                            <span className="text-muted-foreground">Applicable compensation bracket</span>
-                                                            <span className="text-right font-medium">{bracketLabel(item.contribution_table)}</span>
+                                                            <span className="text-muted-foreground">
+                                                                Applicable
+                                                                compensation
+                                                                bracket
+                                                            </span>
+
+                                                            <span className="text-right font-medium">
+                                                                {bracketLabel(
+                                                                    item.contribution_table,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="flex justify-between gap-4 border-t pt-3">
-                                                            <span className="font-medium">Monthly Salary Credit (MSC)</span>
-                                                            <span className="font-mono font-bold">{peso.format(msc)}</span>
+                                                            <span className="font-medium">
+                                                                Monthly Salary
+                                                                Credit (MSC)
+                                                            </span>
+
+                                                            <span className="font-mono font-bold">
+                                                                {peso.format(
+                                                                    msc,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <p className="rounded-lg bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
-                                                            A manual MSC setting, when configured above, is used for future payroll calculations. Existing contribution records remain historical records.
+                                                            This is the MSC
+                                                            recorded for this
+                                                            contribution. The
+                                                            contribution record
+                                                            is historical and
+                                                            cannot be edited
+                                                            from this page.
                                                         </p>
                                                     </CardContent>
                                                 </Card>
 
+                                                {/* =================================================
+                                                    EMPLOYEE SHARE
+                                                ================================================== */}
+
                                                 <Card className="shadow-none">
                                                     <CardHeader className="pb-3">
-                                                        <CardTitle className="text-sm">Employee share — deducted from payroll</CardTitle>
+                                                        <CardTitle className="text-sm">
+                                                            Employee share —
+                                                            deducted from
+                                                            payroll
+                                                        </CardTitle>
                                                     </CardHeader>
+
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="rounded-lg border bg-background p-3">
                                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                <span>Regular SS</span>
+                                                                <span>
+                                                                    Regular SS
+                                                                </span>
+
                                                                 <span className="font-mono font-semibold">
-                                                                    {peso.format(msc)} × {formatRate(employeeSsRate)} = {peso.format(employeeSs)}
+                                                                    {peso.format(
+                                                                        msc,
+                                                                    )}{" "}
+                                                                    ×{" "}
+                                                                    {formatRate(
+                                                                        employeeSsRate,
+                                                                    )}{" "}
+                                                                    ={" "}
+                                                                    {peso.format(
+                                                                        employeeSs,
+                                                                    )}
                                                                 </span>
                                                             </div>
                                                         </div>
+
                                                         {employeeMpf > 0 && (
                                                             <div className="flex justify-between gap-4 rounded-lg border p-3">
-                                                                <span>MPF</span>
-                                                                <span className="font-mono font-semibold">{peso.format(employeeMpf)}</span>
+                                                                <span>
+                                                                    MPF
+                                                                </span>
+
+                                                                <span className="font-mono font-semibold">
+                                                                    {peso.format(
+                                                                        employeeMpf,
+                                                                    )}
+                                                                </span>
                                                             </div>
                                                         )}
+
                                                         <div className="flex justify-between gap-4 border-t pt-3">
-                                                            <span className="font-semibold">Employee SSS deduction</span>
-                                                            <span className="font-mono font-bold text-destructive">{peso.format(employeeShare)}</span>
+                                                            <span className="font-semibold">
+                                                                Employee SSS
+                                                                deduction
+                                                            </span>
+
+                                                            <span className="font-mono font-bold text-destructive">
+                                                                {peso.format(
+                                                                    employeeShare,
+                                                                )}
+                                                            </span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
 
+                                                {/* =================================================
+                                                    EMPLOYER SHARE
+                                                ================================================== */}
+
                                                 <Card className="shadow-none">
                                                     <CardHeader className="pb-3">
-                                                        <CardTitle className="text-sm">Employer share — additional employer cost</CardTitle>
+                                                        <CardTitle className="text-sm">
+                                                            Employer share —
+                                                            additional
+                                                            employer cost
+                                                        </CardTitle>
                                                     </CardHeader>
+
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="rounded-lg border bg-background p-3">
                                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                <span>Regular SS</span>
+                                                                <span>
+                                                                    Regular SS
+                                                                </span>
+
                                                                 <span className="font-mono font-semibold">
-                                                                    {peso.format(msc)} × {formatRate(employerSsRate)} = {peso.format(employerSs)}
+                                                                    {peso.format(
+                                                                        msc,
+                                                                    )}{" "}
+                                                                    ×{" "}
+                                                                    {formatRate(
+                                                                        employerSsRate,
+                                                                    )}{" "}
+                                                                    ={" "}
+                                                                    {peso.format(
+                                                                        employerSs,
+                                                                    )}
                                                                 </span>
                                                             </div>
                                                         </div>
+
                                                         {employerMpf > 0 && (
                                                             <div className="flex justify-between gap-4 rounded-lg border p-3">
-                                                                <span>MPF</span>
-                                                                <span className="font-mono font-semibold">{peso.format(employerMpf)}</span>
+                                                                <span>
+                                                                    MPF
+                                                                </span>
+
+                                                                <span className="font-mono font-semibold">
+                                                                    {peso.format(
+                                                                        employerMpf,
+                                                                    )}
+                                                                </span>
                                                             </div>
                                                         )}
+
                                                         <div className="flex justify-between gap-4 rounded-lg border p-3">
-                                                            <span>Employer EC</span>
-                                                            <span className="font-mono font-semibold">{peso.format(employerEc)}</span>
+                                                            <span>
+                                                                Employer EC
+                                                            </span>
+
+                                                            <span className="font-mono font-semibold">
+                                                                {peso.format(
+                                                                    employerEc,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="flex justify-between gap-4 border-t pt-3">
-                                                            <span className="font-semibold">Employer contribution</span>
-                                                            <span className="font-mono font-bold">{peso.format(employerShare)}</span>
+                                                            <span className="font-semibold">
+                                                                Employer
+                                                                contribution
+                                                            </span>
+
+                                                            <span className="font-mono font-bold">
+                                                                {peso.format(
+                                                                    employerShare,
+                                                                )}
+                                                            </span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
+
+                                                {/* =================================================
+                                                    REMITTANCE
+                                                ================================================== */}
 
                                                 <Card className="border-primary/30 bg-primary/5 shadow-none">
                                                     <CardHeader className="pb-3">
-                                                        <CardTitle className="text-sm">What gets deducted vs. what gets remitted</CardTitle>
+                                                        <CardTitle className="text-sm">
+                                                            What gets deducted
+                                                            vs. what gets
+                                                            remitted
+                                                        </CardTitle>
                                                     </CardHeader>
+
                                                     <CardContent className="space-y-3 text-sm">
                                                         <div className="flex justify-between gap-4">
-                                                            <span>Employee Share</span>
-                                                            <span className="font-mono font-bold">{peso.format(employeeShare)}</span>
+                                                            <span>
+                                                                Employee Share
+                                                            </span>
+
+                                                            <span className="font-mono font-bold">
+                                                                {peso.format(
+                                                                    employeeShare,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="flex justify-between gap-4">
-                                                            <span>Employer Share</span>
-                                                            <span className="font-mono font-bold">{peso.format(employerShare)}</span>
+                                                            <span>
+                                                                Employer Share
+                                                            </span>
+
+                                                            <span className="font-mono font-bold">
+                                                                {peso.format(
+                                                                    employerShare,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="flex justify-between gap-4 border-t pt-3 text-base">
-                                                            <span className="font-bold">Total remitted to SSS</span>
-                                                            <span className="font-mono font-bold">{peso.format(remittance)}</span>
+                                                            <span className="font-bold">
+                                                                Total remitted
+                                                                to SSS
+                                                            </span>
+
+                                                            <span className="font-mono font-bold">
+                                                                {peso.format(
+                                                                    remittance,
+                                                                )}
+                                                            </span>
                                                         </div>
+
                                                         <div className="rounded-lg border border-primary/20 bg-background p-3 text-xs leading-5">
-                                                            <strong>Employee clarification:</strong> only {peso.format(employeeShare)} is deducted from the employee's payroll. The {peso.format(employerShare)} employer share is an additional employer cost and does not reduce the employee's net pay.
+                                                            <strong>
+                                                                Employee
+                                                                clarification:
+                                                            </strong>{" "}
+                                                            only{" "}
+                                                            {peso.format(
+                                                                employeeShare,
+                                                            )}{" "}
+                                                            is deducted from
+                                                            the employee's
+                                                            payroll. The{" "}
+                                                            {peso.format(
+                                                                employerShare,
+                                                            )}{" "}
+                                                            employer share is
+                                                            an additional
+                                                            employer cost and
+                                                            does not reduce the
+                                                            employee's net pay.
                                                         </div>
                                                     </CardContent>
                                                 </Card>
                                             </div>
                                         </div>
-                                    )
+                                    );
                                 })
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* =====================================================
+                        SUMMARY
+                    ====================================================== */}
 
                     {contributions.length > 0 && (
                         <Card>
                             <CardContent className="p-5">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <p className="font-semibold">Contribution summary</p>
+                                        <p className="font-semibold">
+                                            Contribution summary
+                                        </p>
+
                                         <p className="text-sm text-muted-foreground">
-                                            Employee deductions plus employer contributions equal the total amount remitted to SSS.
+                                            Employee deductions plus employer
+                                            contributions equal the total
+                                            amount remitted to SSS.
                                         </p>
                                     </div>
-                                    <p className="font-mono text-lg font-bold">{peso.format(totalRemittance)}</p>
+
+                                    <p className="font-mono text-lg font-bold">
+                                        {peso.format(totalRemittance)}
+                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -455,5 +742,5 @@ export default function SssContributions({ employee, contributions }: Props) {
                 </div>
             </div>
         </AuthenticatedLayout>
-    )
+    );
 }

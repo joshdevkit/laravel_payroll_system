@@ -1,3 +1,5 @@
+import { Branch } from "../employees/BranchDialog";
+
 export type PayrollScheduleDetail = {
     id: string;
     work_date: string;
@@ -63,7 +65,9 @@ export type PayrollItem = {
     tardy_deduction: string | number;
     schedule_details: PayrollScheduleDetail[];
     totalEarnings: string | number;
-    cash_advance: string | number;
+    cash_advance_deduction: string | number;
+    sss_loan_deduction: string | number;
+    pagibig_loan_deduction: string | number;
 };
 
 export type PayrollRun = {
@@ -73,7 +77,8 @@ export type PayrollRun = {
     pay_date: string;
     status: 'draft' | 'processing' | 'completed' | 'cancelled' | string;
     items: PayrollItem[];
-    category: Category;
+    branch: Branch;
+    department: Category
 };
 
 

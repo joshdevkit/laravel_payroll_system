@@ -27,7 +27,7 @@ const navItems = [
 
 export function Navbar() {
     const { props, url } = usePage();
-    const auth = props.auth;
+    const auth = props.auth as { user: { name: string; email: string } } | undefined;
     const [open, setOpen] = useState(false);
     const [dark, setDark] = useState(false);
     const accountMenuRef = useRef<HTMLDivElement>(null);

@@ -14,6 +14,11 @@ use App\Models\PayrollItem;
 use App\Models\Category;
 use App\Models\SssDeduction;
 
+use App\Models\SssContribution;
+use App\Models\LoanAndCashAdvance;
+use App\Models\LoanDeduction;
+
+use App\Models\Branch;
 class Employee extends Model
 {
     use HasFactory;
@@ -26,6 +31,7 @@ class Employee extends Model
 
     protected $fillable = [
         'employee_id',
+        'branch_id',
         'category_id',
         'full_name',
         'employment_type',
@@ -87,5 +93,20 @@ class Employee extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function loansAndCashAdvances(): HasMany
+    {
+        return $this->hasMany(LoanAndCashAdvance::class);
+    }
+
+    public function loanDeductions(): HasMany
+    {
+        return $this->hasMany(LoanDeduction::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 }

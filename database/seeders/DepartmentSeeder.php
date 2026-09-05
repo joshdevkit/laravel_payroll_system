@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 use App\Models\Category;
+
 class DepartmentSeeder extends Seeder
 {
     /**
@@ -14,9 +14,9 @@ class DepartmentSeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            'Regular Staff',
-            'Supervisor',
-            'Manager',
+            'IT Department',
+            'Canteen',
+            'Maxi',
         ];
 
         foreach ($categories as $name) {

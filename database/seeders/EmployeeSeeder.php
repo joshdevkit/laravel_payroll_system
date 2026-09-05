@@ -14,9 +14,9 @@ class EmployeeSeeder extends Seeder
      */
     public function run(): void
     {
-        $regularStaff = Category::where('name', 'Regular Staff')->firstOrFail();
-        $supervisor = Category::where('name', 'Supervisor')->firstOrFail();
-        $manager = Category::where('name', 'Manager')->firstOrFail();
+        $regularStaff = Category::where('name', 'IT Department')->firstOrFail();
+        $supervisor = Category::where('name', 'Canteen')->firstOrFail();
+        $manager = Category::where('name', 'Maxi')->firstOrFail();
 
         $employees = [
             [
@@ -26,7 +26,7 @@ class EmployeeSeeder extends Seeder
                 'employment_type' => 'Regular',
                 'rate_type' => 'Daily',
                 'basic_rate' => NULL,
-                'daily_rate' => 500.00,
+                'daily_rate' => 500,
                 'sss_no' => '34-1234567-8',
                 'philhealth_no' => '12-345678901-2',
                 'pagibig_no' => '1234-5678-9012',
@@ -40,7 +40,7 @@ class EmployeeSeeder extends Seeder
                 'employment_type' => 'Regular',
                 'rate_type' => 'Daily',
                 'basic_rate' => NULL,
-                'daily_rate' => 500.00,
+                'daily_rate' => 500,
                 'sss_no' => '34-2345678-9',
                 'philhealth_no' => '12-456789012-3',
                 'pagibig_no' => '2345-6789-0123',
@@ -54,7 +54,7 @@ class EmployeeSeeder extends Seeder
                 'employment_type' => 'Regular',
                 'rate_type' => 'Daily',
                 'basic_rate' => NULL,
-                'daily_rate' => 500.00,
+                'daily_rate' => 500,
                 'sss_no' => '34-3456789-0',
                 'philhealth_no' => '12-567890123-4',
                 'pagibig_no' => '3456-7890-1234',

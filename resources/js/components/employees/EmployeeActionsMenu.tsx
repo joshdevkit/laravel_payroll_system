@@ -30,6 +30,13 @@ export function EmployeeActionsMenu({ employee, position, onClose, onEdit, onDel
             >
                 View contributions
             </Link>
+            <Link
+                href={`/employees/${employee.id}/loans-and-cash-advances`}
+                className="flex rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"
+                onClick={onClose}
+            >
+                Loans and Cash Advances
+            </Link>
             <button
                 type="button"
                 className="flex w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted"

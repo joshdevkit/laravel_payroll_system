@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+use App\Models\LoanDeduction;
+
 class PayrollItem extends Model
 {
     use HasFactory;
@@ -60,6 +62,11 @@ class PayrollItem extends Model
         'total_deductions',
         'net_pay',
 
+
+        'cash_advance_deduction',
+        'sss_loan_deduction',
+        'pagibig_loan_deduction',
+
         'calculation_snapshot',
     ];
 
@@ -99,6 +106,10 @@ class PayrollItem extends Model
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
 
+        'cash_advance_deduction' => 'decimal:2',
+        'sss_loan_deduction' => 'decimal:2',
+        'pagibig_loan_deduction' => 'decimal:2',
+
         'calculation_snapshot' => 'array',
     ];
 
@@ -127,5 +138,10 @@ class PayrollItem extends Model
     public function scheduleDetails(): HasMany
     {
         return $this->hasMany(PayrollScheduleDetail::class);
+    }
+
+    public function loanDeductions(): HasMany
+    {
+        return $this->hasMany(LoanDeduction::class);
     }
 }

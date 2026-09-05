@@ -1,162 +1,227 @@
-import { FormEvent, useEffect } from 'react'
-import { useForm } from '@inertiajs/react'
-import { Building2, CalendarDays, IdCard, UserRound, X } from 'lucide-react'
+import { FormEvent, useEffect } from "react";
+import { useForm } from "@inertiajs/react";
+import { Building2, CalendarDays, IdCard, UserRound, X } from "lucide-react";
 
-import { Button } from '@/components/ui/button'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
-
-export interface Employee {
-    id: string
-    employee_id: string
-    category_id: number
-    category: Category
-    full_name: string
-    employment_type: 'regular' | 'probationary' | 'contractual'
-    rate_type: 'daily' | 'monthly'
-    basic_rate: string | number | null
-    daily_rate: string | number | null
-    sss_no: string | null
-    philhealth_no: string | null
-    pagibig_no: string | null
-    tin: string | null
-    date_hired: string
-    created_at: string
-}
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Branch } from "./BranchDialog";
 
 export interface Category {
-    id: number
-    name: string
+    id: number;
+    name: string;
+}
+
+export interface Employee {
+    id: string;
+    employee_id: string;
+    branch_id: string;
+    category_id: number | string;
+    category?: Category | null;
+    full_name: string;
+    employment_type: "regular" | "probationary" | "contractual";
+    rate_type: "daily" | "monthly";
+    basic_rate: string | number | null;
+    daily_rate: string | number | null;
+    sss_no: string | null;
+    philhealth_no: string | null;
+    pagibig_no: string | null;
+    tin: string | null;
+    date_hired: string;
+    created_at: string;
+    branch?: Branch;
 }
 
 export type EmployeeFormData = {
-    employee_id: string
-    category_id: number
-    full_name: string
-    employment_type: Employee['employment_type']
-    rate_type: Employee['rate_type']
-    basic_rate: string | number | null
-    daily_rate: string | number | null
-    sss_no: string
-    philhealth_no: string
-    pagibig_no: string
-    tin: string
-    date_hired: string
-}
+    employee_id: string;
+    category_id: number;
+    branch_id: string;
+    full_name: string;
+    employment_type: Employee["employment_type"];
+    rate_type: Employee["rate_type"];
+    basic_rate: string | number | null;
+    daily_rate: string | number | null;
+    sss_no: string;
+    philhealth_no: string;
+    pagibig_no: string;
+    tin: string;
+    date_hired: string;
+};
 
 interface EmployeeFormDialogProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    employee: Employee | null
-    category: Category[] | null
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    employee: Employee | null;
+    category: Category[] | null;
+    branches: Branch[] | null;
 }
 
 const emptyDefaults: EmployeeFormData = {
-    employee_id: '',
+    employee_id: "",
     category_id: 0,
-    full_name: '',
-    employment_type: 'regular',
-    rate_type: 'daily',
+    branch_id: "",
+    full_name: "",
+    employment_type: "regular",
+    rate_type: "daily",
     basic_rate: null,
     daily_rate: null,
-    sss_no: '',
-    philhealth_no: '',
-    pagibig_no: '',
-    tin: '',
-    date_hired: '',
-}
+    sss_no: "",
+    philhealth_no: "",
+    pagibig_no: "",
+    tin: "",
+    date_hired: "",
+};
 
 export function EmployeeFormDialog({
     open,
     onOpenChange,
     employee,
     category,
+    branches,
 }: EmployeeFormDialogProps) {
-    const isEditMode = employee !== null
-
-    const form = useForm<EmployeeFormData>(emptyDefaults)
-
+    const isEditMode = employee !== null;
+    const form = useForm<EmployeeFormData>(emptyDefaults);
+    /**
+     * Load employee values into the form.
+     *
+     * We normalize values coming from Laravel because database
+     * values can sometimes arrive as strings.
+     */
     useEffect(() => {
-        if (!open) return
+        if (!open) {
+            return;
+        }
 
         if (!employee) {
-            form.setData(emptyDefaults)
-            form.clearErrors()
-            return
+            form.setData({
+                ...emptyDefaults,
+            });
+
+            form.clearErrors();
+
+            return;
         }
+
+        const employmentType: Employee["employment_type"] =
+            employee.employment_type === "probationary"
+                ? "probationary"
+                : employee.employment_type === "contractual"
+                  ? "contractual"
+                  : "regular";
+
+        const rateType: Employee["rate_type"] =
+            employee.rate_type === "monthly" ? "monthly" : "daily";
+
+        const categoryId = Number(employee.category_id);
 
         form.setData({
-            employee_id: employee.employee_id ?? '',
-            category_id: employee.category_id ?? 0,
-            full_name: employee.full_name ?? '',
-            employment_type: employee.employment_type ?? 'regular',
-            rate_type: employee.rate_type ?? 'daily',
+            employee_id: employee.employee_id ?? "",
+            category_id: Number.isNaN(categoryId) ? 0 : categoryId,
+            full_name: employee.full_name ?? "",
+            branch_id: employee.branch_id,
+            employment_type: employmentType,
+            rate_type: rateType,
+
+            /*
+             * Only load the rate relevant to the selected rate type.
+             */
             basic_rate:
-                employee.rate_type === 'monthly'
-                    ? employee.basic_rate ?? null
-                    : null,
-            daily_rate:
-                employee.rate_type === 'daily'
-                    ? employee.daily_rate ?? employee.basic_rate ?? null
-                    : null,
-            sss_no: employee.sss_no ?? '',
-            philhealth_no: employee.philhealth_no ?? '',
-            pagibig_no: employee.pagibig_no ?? '',
-            tin: employee.tin ?? '',
-            date_hired: employee.date_hired ?? '',
-        })
-
-        form.clearErrors()
-    }, [open, employee])
-
-    const submit = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault()
-
-        form.transform((data) => ({
-            ...data,
-
-            category_id: Number(data.category_id),
-
-            basic_rate:
-                data.rate_type === 'monthly'
-                    ? data.basic_rate || null
-                    : null,
+                rateType === "monthly" ? (employee.basic_rate ?? null) : null,
 
             daily_rate:
-                data.rate_type === 'daily'
-                    ? data.daily_rate || null
+                rateType === "daily"
+                    ? (employee.daily_rate ?? employee.basic_rate ?? null)
                     : null,
-        }))
 
-        if (isEditMode) {
-            form.put(`/employees/${employee.id}`, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    onOpenChange(false)
-                    form.reset()
-                },
-            })
+            sss_no: employee.sss_no ?? "",
+            philhealth_no: employee.philhealth_no ?? "",
+            pagibig_no: employee.pagibig_no ?? "",
+            tin: employee.tin ?? "",
+            date_hired: employee.date_hired
+                ? employee.date_hired.substring(0, 10)
+                : "",
+        });
 
-            return
+        form.clearErrors();
+    }, [open, employee]);
+
+    /**
+     * Rate type changed.
+     *
+     * Clear the irrelevant rate so we never accidentally submit
+     * both daily_rate and basic_rate.
+     */
+    const handleRateTypeChange = (value: Employee["rate_type"]) => {
+        form.setData("rate_type", value);
+
+        if (value === "daily") {
+            form.setData("basic_rate", null);
+
+            return;
         }
 
-        form.post('/employees', {
+        form.setData("daily_rate", null);
+    };
+
+    const submit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        /*
+         * Normalize the payload before sending it to Laravel.
+         */
+        const payload: EmployeeFormData = {
+            ...form.data,
+
+            category_id: Number(form.data.category_id),
+
+            basic_rate:
+                form.data.rate_type === "monthly"
+                    ? form.data.basic_rate || null
+                    : null,
+
+            daily_rate:
+                form.data.rate_type === "daily"
+                    ? form.data.daily_rate || null
+                    : null,
+        };
+
+        form.transform(() => payload);
+
+        if (isEditMode && employee) {
+            form.put(`/employees/${employee.id}`, {
+                preserveScroll: true,
+
+                onSuccess: () => {
+                    onOpenChange(false);
+                    form.reset();
+                    form.clearErrors();
+                },
+            });
+
+            return;
+        }
+
+        form.post("/employees", {
             preserveScroll: true,
+
             onSuccess: () => {
-                onOpenChange(false)
-                form.reset()
+                onOpenChange(false);
+
+                form.reset();
+                form.clearErrors();
             },
-        })
+        });
+    };
+
+    if (!open) {
+        return null;
     }
 
-    if (!open) return null
-
-    const errors = form.errors as Record<string, string | undefined>
+    const errors = form.errors as Record<string, string | undefined>;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
             <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl">
-
                 {/* Header */}
                 <div className="flex items-center justify-between border-b bg-muted/30 px-6 py-5">
                     <div className="flex items-center gap-4">
@@ -166,15 +231,13 @@ export function EmployeeFormDialog({
 
                         <div>
                             <h2 className="text-lg font-semibold tracking-tight">
-                                {isEditMode
-                                    ? 'Edit employee'
-                                    : 'Add employee'}
+                                {isEditMode ? "Edit employee" : "Add employee"}
                             </h2>
 
                             <p className="mt-0.5 text-sm text-muted-foreground">
                                 {isEditMode
-                                    ? 'Update employee information and payroll details.'
-                                    : 'Create a new employee record for payroll.'}
+                                    ? "Update employee information and payroll details."
+                                    : "Create a new employee record for payroll."}
                             </p>
                         </div>
                     </div>
@@ -196,7 +259,6 @@ export function EmployeeFormDialog({
                     className="flex-1 overflow-y-auto"
                 >
                     <div className="space-y-8 p-6">
-
                         {/* BASIC INFORMATION */}
                         <section>
                             <div className="mb-4 flex items-center gap-3">
@@ -217,10 +279,11 @@ export function EmployeeFormDialog({
 
                             <div className="rounded-xl border bg-card p-5">
                                 <FieldGroup>
-                                    <div className="grid gap-5 sm:grid-cols-2">
-
-                                        {/* Employee ID */}
-                                        <Field data-invalid={!!errors.employee_id}>
+                                    {/* Employee ID */}
+                                    <div className="grid gap-5 sm:grid-cols-3">
+                                        <Field
+                                            data-invalid={!!errors.employee_id}
+                                        >
                                             <FieldLabel htmlFor="employee-employee_id">
                                                 Employee ID
                                             </FieldLabel>
@@ -231,11 +294,13 @@ export function EmployeeFormDialog({
                                                 value={form.data.employee_id}
                                                 onChange={(event) =>
                                                     form.setData(
-                                                        'employee_id',
+                                                        "employee_id",
                                                         event.target.value,
                                                     )
                                                 }
-                                                aria-invalid={!!errors.employee_id}
+                                                aria-invalid={
+                                                    !!errors.employee_id
+                                                }
                                             />
 
                                             {errors.employee_id && (
@@ -246,7 +311,52 @@ export function EmployeeFormDialog({
                                         </Field>
 
                                         {/* Department */}
-                                        <Field data-invalid={!!errors.category_id}>
+                                        <Field
+                                            data-invalid={!!errors.branch_id}
+                                        >
+                                            <FieldLabel htmlFor="employee-branch_id">
+                                                Branch
+                                            </FieldLabel>
+
+                                            <select
+                                                id="employee-branch_id"
+                                                value={form.data.branch_id}
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        "branch_id",
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                aria-invalid={
+                                                    !!errors.branch_id
+                                                }
+                                                className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                            >
+                                                <option value="" disabled>
+                                                    Select Branch
+                                                </option>
+
+                                                {branches?.map((item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            {errors.branch_id && (
+                                                <p className="text-xs text-destructive">
+                                                    {errors.branch_id}
+                                                </p>
+                                            )}
+                                        </Field>
+
+                                        {/* Department */}
+                                        <Field
+                                            data-invalid={!!errors.category_id}
+                                        >
                                             <FieldLabel htmlFor="employee-category_id">
                                                 Department
                                             </FieldLabel>
@@ -256,12 +366,16 @@ export function EmployeeFormDialog({
                                                 value={form.data.category_id}
                                                 onChange={(event) =>
                                                     form.setData(
-                                                        'category_id',
-                                                        Number(event.target.value),
+                                                        "category_id",
+                                                        Number(
+                                                            event.target.value,
+                                                        ),
                                                     )
                                                 }
-                                                aria-invalid={!!errors.category_id}
-                                                className="border-input bg-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                                aria-invalid={
+                                                    !!errors.category_id
+                                                }
+                                                className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                             >
                                                 <option value={0} disabled>
                                                     Select department
@@ -297,7 +411,7 @@ export function EmployeeFormDialog({
                                             value={form.data.full_name}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'full_name',
+                                                    "full_name",
                                                     event.target.value,
                                                 )
                                             }
@@ -334,7 +448,6 @@ export function EmployeeFormDialog({
 
                             <div className="rounded-xl border bg-card p-5">
                                 <div className="grid gap-5 sm:grid-cols-2">
-
                                     {/* Employment Type */}
                                     <Field>
                                         <FieldLabel htmlFor="employee-employment_type">
@@ -346,8 +459,9 @@ export function EmployeeFormDialog({
                                             value={form.data.employment_type}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'employment_type',
-                                                    event.target.value as Employee['employment_type'],
+                                                    "employment_type",
+                                                    event.target
+                                                        .value as Employee["employment_type"],
                                                 )
                                             }
                                             className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -364,6 +478,12 @@ export function EmployeeFormDialog({
                                                 Contractual
                                             </option>
                                         </select>
+
+                                        {errors.employment_type && (
+                                            <p className="text-xs text-destructive">
+                                                {errors.employment_type}
+                                            </p>
+                                        )}
                                     </Field>
 
                                     {/* Rate Type */}
@@ -376,25 +496,29 @@ export function EmployeeFormDialog({
                                             id="employee-rate_type"
                                             value={form.data.rate_type}
                                             onChange={(event) =>
-                                                form.setData(
-                                                    'rate_type',
-                                                    event.target.value as Employee['rate_type'],
+                                                handleRateTypeChange(
+                                                    event.target
+                                                        .value as Employee["rate_type"],
                                                 )
                                             }
                                             className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
-                                            <option value="daily">
-                                                Daily
-                                            </option>
+                                            <option value="daily">Daily</option>
 
                                             <option value="monthly">
                                                 Monthly
                                             </option>
                                         </select>
+
+                                        {errors.rate_type && (
+                                            <p className="text-xs text-destructive">
+                                                {errors.rate_type}
+                                            </p>
+                                        )}
                                     </Field>
 
-                                    {/* Rate */}
-                                    {form.data.rate_type === 'daily' ? (
+                                    {/* Daily Rate */}
+                                    {form.data.rate_type === "daily" && (
                                         <Field
                                             data-invalid={!!errors.daily_rate}
                                             className="sm:col-span-2"
@@ -416,11 +540,12 @@ export function EmployeeFormDialog({
                                                     placeholder="500.00"
                                                     className="pl-8 font-mono"
                                                     value={
-                                                        form.data.daily_rate ?? ''
+                                                        form.data.daily_rate ??
+                                                        ""
                                                     }
                                                     onChange={(event) =>
                                                         form.setData(
-                                                            'daily_rate',
+                                                            "daily_rate",
                                                             event.target.value,
                                                         )
                                                     }
@@ -431,8 +556,8 @@ export function EmployeeFormDialog({
                                             </div>
 
                                             <p className="text-xs text-muted-foreground">
-                                                Payroll uses this amount for each
-                                                payable attendance day.
+                                                Payroll uses this amount for
+                                                each payable attendance day.
                                             </p>
 
                                             {errors.daily_rate && (
@@ -441,7 +566,10 @@ export function EmployeeFormDialog({
                                                 </p>
                                             )}
                                         </Field>
-                                    ) : (
+                                    )}
+
+                                    {/* Monthly Rate */}
+                                    {form.data.rate_type === "monthly" && (
                                         <Field
                                             data-invalid={!!errors.basic_rate}
                                             className="sm:col-span-2"
@@ -463,11 +591,12 @@ export function EmployeeFormDialog({
                                                     placeholder="15,000.00"
                                                     className="pl-8 font-mono"
                                                     value={
-                                                        form.data.basic_rate ?? ''
+                                                        form.data.basic_rate ??
+                                                        ""
                                                     }
                                                     onChange={(event) =>
                                                         form.setData(
-                                                            'basic_rate',
+                                                            "basic_rate",
                                                             event.target.value,
                                                         )
                                                     }
@@ -509,7 +638,7 @@ export function EmployeeFormDialog({
                                                 value={form.data.date_hired}
                                                 onChange={(event) =>
                                                     form.setData(
-                                                        'date_hired',
+                                                        "date_hired",
                                                         event.target.value,
                                                     )
                                                 }
@@ -542,14 +671,14 @@ export function EmployeeFormDialog({
                                     </h3>
 
                                     <p className="text-xs text-muted-foreground">
-                                        Optional government identification numbers.
+                                        Optional government identification
+                                        numbers.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="rounded-xl border bg-card p-5">
                                 <div className="grid gap-5 sm:grid-cols-2">
-
                                     <Field>
                                         <FieldLabel htmlFor="employee-sss_no">
                                             SSS No.
@@ -561,7 +690,7 @@ export function EmployeeFormDialog({
                                             value={form.data.sss_no}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'sss_no',
+                                                    "sss_no",
                                                     event.target.value,
                                                 )
                                             }
@@ -579,7 +708,7 @@ export function EmployeeFormDialog({
                                             value={form.data.philhealth_no}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'philhealth_no',
+                                                    "philhealth_no",
                                                     event.target.value,
                                                 )
                                             }
@@ -597,7 +726,7 @@ export function EmployeeFormDialog({
                                             value={form.data.pagibig_no}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'pagibig_no',
+                                                    "pagibig_no",
                                                     event.target.value,
                                                 )
                                             }
@@ -615,7 +744,7 @@ export function EmployeeFormDialog({
                                             value={form.data.tin}
                                             onChange={(event) =>
                                                 form.setData(
-                                                    'tin',
+                                                    "tin",
                                                     event.target.value,
                                                 )
                                             }
@@ -631,8 +760,8 @@ export function EmployeeFormDialog({
                 <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/20 px-6 py-4">
                     <p className="hidden text-xs text-muted-foreground sm:block">
                         {isEditMode
-                            ? 'Changes will be saved to this employee record.'
-                            : 'Fields marked by validation errors must be corrected.'}
+                            ? "Changes will be saved to this employee record."
+                            : "Fields marked by validation errors must be corrected."}
                     </p>
 
                     <div className="ml-auto flex gap-2">
@@ -651,14 +780,14 @@ export function EmployeeFormDialog({
                             disabled={form.processing}
                         >
                             {form.processing
-                                ? 'Saving…'
+                                ? "Saving…"
                                 : isEditMode
-                                  ? 'Save changes'
-                                  : 'Add employee'}
+                                  ? "Save changes"
+                                  : "Add employee"}
                         </Button>
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }

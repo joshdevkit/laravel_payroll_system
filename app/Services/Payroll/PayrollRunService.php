@@ -10,6 +10,15 @@ use App\Models\PayrollSetting;
 use App\Models\SssContribution;
 use Illuminate\Support\Facades\DB;
 
+use Illuminate\Support\Str;
+use App\Models\LoanAndCashAdvance;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
+
+use App\Models\LoanDeduction;
+use RuntimeException;
+
 class PayrollRunService
 {
     public function __construct(
@@ -21,13 +30,13 @@ class PayrollRunService
      * Create a new draft payroll run.
      */
     public function createDraft(
-        string $category_id,
+        string $branch_id,
         string $cutoffStart,
         string $cutoffEnd,
         string $payDate
     ): PayrollRun {
         return DB::transaction(function () use (
-            $category_id,
+            $branch_id,
             $cutoffStart,
             $cutoffEnd,
             $payDate
@@ -36,7 +45,7 @@ class PayrollRunService
                 ->findOrFail(1);
 
             $run = PayrollRun::create([
-                'category_id' => $category_id,
+                'branch_id' => $branch_id,
                 'cutoff_start' => $cutoffStart,
                 'cutoff_end' => $cutoffEnd,
                 'pay_date' => $payDate,
@@ -64,6 +73,7 @@ class PayrollRunService
     ): PayrollRun {
         if ($run->status !== 'draft') {
             return $run->load([
+                'items.employee.branch',
                 'items.employee.category',
                 'items.scheduleDetails',
             ]);
@@ -79,6 +89,7 @@ class PayrollRunService
             );
 
             return $run->fresh([
+                'items.employee.branch',
                 'items.employee.category',
                 'items.scheduleDetails',
             ]);
@@ -93,7 +104,7 @@ class PayrollRunService
         PayrollSetting $settings
     ): void {
         $employeeIds = Employee::query()
-            ->where('category_id', $run->category_id)
+            ->where('branch_id', $run->branch_id)
             ->pluck('id');
 
         // Remove payroll items for employees who no longer
@@ -127,6 +138,12 @@ class PayrollRunService
                 $run,
                 $item,
                 $employee
+            );
+
+            $this->saveLoanDeductions(
+                $run,
+                $item,
+                $calculation
             );
 
             $this->saveScheduleDetails(
@@ -167,6 +184,53 @@ class PayrollRunService
                 ...$contribution,
             ]
         );
+    }
+
+
+    private function saveLoanDeductions(
+        PayrollRun $run,
+        PayrollItem $item,
+        PayrollCalculationResult $calculation
+    ): void {
+        $details = $calculation->loanDeductions();
+
+        /*
+     * Rebuild loan deduction records for this payroll item.
+     *
+     * This is safe while the payroll is still a draft because
+     * the records are recreated whenever the payroll is recalculated.
+     */
+        $item->loanDeductions()->delete();
+
+        foreach ($details as $detail) {
+            $item->loanDeductions()->create([
+                'loan_and_cash_advance_id' =>
+                $detail['loan_id'],
+
+                'employee_id' =>
+                $item->employee_id,
+
+                'payroll_run_id' =>
+                $run->id,
+
+                'amount' =>
+                $detail['deduction_amount'],
+
+                'balance_before' =>
+                $detail['balance_before'],
+
+                'balance_after' =>
+                $detail['balance_after'],
+
+                'deduction_date' =>
+                Carbon::parse($run->pay_date)->toDateString(),
+
+                'notes' =>
+                $detail['reference_no']
+                    ? 'Reference: ' . $detail['reference_no']
+                    : null,
+            ]);
+        }
     }
 
     /**
@@ -235,5 +299,180 @@ class PayrollRunService
                 $detail['calculationNotes'] ?? null,
             ]);
         }
+    }
+
+    /**
+     * Confirm/finalize a payroll run.
+     *
+     * Draft payrolls only calculate loan deductions.
+     *
+     * Confirmation is the point where the actual loan/cash advance
+     * balance is reduced.
+     */
+    public function confirm(
+        PayrollRun $run
+    ): PayrollRun {
+        if ($run->status !== 'draft') {
+            throw new RuntimeException(
+                'Only draft payroll runs can be confirmed.'
+            );
+        }
+
+        return DB::transaction(function () use ($run) {
+
+            /*
+         * Lock the payroll run so two confirmation requests
+         * cannot post the same deductions simultaneously.
+         */
+            $run = PayrollRun::query()
+                ->lockForUpdate()
+                ->findOrFail($run->id);
+
+            /*
+         * Recalculate the draft one final time.
+         *
+         * This ensures the loan deduction records represent
+         * the latest payroll calculation before posting.
+         */
+            $this->ensureItems($run);
+
+            /*
+         * Reload the payroll items and their loan deductions.
+         */
+            $run->load([
+                'items.employee',
+                'items.loanDeductions',
+            ]);
+
+            foreach ($run->items as $item) {
+
+                foreach ($item->loanDeductions as $deduction) {
+
+                    /*
+                 * Lock the actual loan/cash advance row.
+                 *
+                 * This prevents two payroll processes from
+                 * modifying the same balance at the same time.
+                 */
+                    $loan = LoanAndCashAdvance::query()
+                        ->lockForUpdate()
+                        ->find(
+                            $deduction->loan_and_cash_advance_id
+                        );
+
+                    if (! $loan) {
+                        continue;
+                    }
+
+                    /*
+                 * IMPORTANT:
+                 *
+                 * Do not post the same deduction twice.
+                 */
+                    $alreadyPosted = LoanDeduction::query()
+                        ->where(
+                            'loan_and_cash_advance_id',
+                            $loan->id
+                        )
+                        ->where(
+                            'payroll_run_id',
+                            $run->id
+                        )
+                        ->where(
+                            'id',
+                            '!=',
+                            $deduction->id
+                        )
+                        ->exists();
+
+                    if ($alreadyPosted) {
+                        continue;
+                    }
+
+                    /*
+                 * Get the CURRENT balance.
+                 *
+                 * Do not blindly use balance_after from the
+                 * draft snapshot because the balance may have
+                 * changed since the draft was created.
+                 */
+                    $balanceBefore =
+                        (float) $loan->balance;
+
+                    /*
+                 * Never deduct more than the remaining balance.
+                 */
+                    $amount = min(
+                        (float) $deduction->amount,
+                        $balanceBefore
+                    );
+
+                    $amount = max(
+                        0,
+                        $amount
+                    );
+
+                    if ($amount <= 0) {
+                        continue;
+                    }
+
+                    $balanceAfter =
+                        max(
+                            0,
+                            $balanceBefore - $amount
+                        );
+
+                    /*
+                 * =================================================
+                 * ACTUAL BALANCE UPDATE
+                 * =================================================
+                 */
+                    $loan->update([
+                        'balance' =>
+                        $balanceAfter,
+
+                        'status' =>
+                        $balanceAfter <= 0
+                            ? 'paid'
+                            : 'active',
+                    ]);
+
+                    /*
+                 * Update the deduction record with the
+                 * ACTUAL posted balance values.
+                 */
+                    $deduction->update([
+                        'amount' =>
+                        $amount,
+
+                        'balance_before' =>
+                        $balanceBefore,
+
+                        'balance_after' =>
+                        $balanceAfter,
+
+                        'notes' =>
+                        trim(
+                            ($deduction->notes ?? '')
+                                . ' Payroll deduction posted.'
+                        ),
+                    ]);
+                }
+            }
+
+            /*
+         * Payroll is now officially finalized.
+         */
+            $run->update([
+                'status' => 'completed',
+            ]);
+
+            return $run->fresh([
+                'items.employee.category',
+                'items.scheduleDetails',
+                'items.loanDeductions',
+                'loanDeductions',
+            ]);
+        });
     }
 }

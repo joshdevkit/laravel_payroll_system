@@ -7,20 +7,19 @@ use App\Services\Payroll\PayrollRunService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
-
-use App\Models\Category;
+use App\Models\Branch;
 class PayrollRunController extends Controller
 {
     public function index(): Response
     {
         return inertia('PayrollRuns/Index', [
             'payrollRuns' => PayrollRun::query()
-                ->with('category')
+                ->with(['branch', 'category'])
                 ->withCount('items')
                 ->orderByDesc('pay_date')
                 ->orderByDesc('created_at')
                 ->get(),
-            'categories' => Category::query()->select(['id', 'name'])
+            'branches' => Branch::query()->select(['id', 'name'])
                 ->orderBy('name')
                 ->get(),
         ]);
@@ -31,9 +30,9 @@ class PayrollRunController extends Controller
         PayrollRunService $service
     ): RedirectResponse {
         $validated = $request->validate([
-            'category_id' => [
+            'branch_id' => [
                 'required',
-                'exists:categories,id',
+                'exists:branches,id',
             ],
 
             'cutoff_start' => [
@@ -54,7 +53,7 @@ class PayrollRunController extends Controller
         ]);
 
         $service->createDraft(
-            $validated['category_id'],
+            $validated['branch_id'],
             $validated['cutoff_start'],
             $validated['cutoff_end'],
             $validated['pay_date'],
@@ -90,31 +89,31 @@ class PayrollRunController extends Controller
             'PayrollRuns/Show',
             [
                 'payrollRun' =>
-                    $payrollRun,
+                $payrollRun,
             ]
         );
     }
 
     public function confirm(
-        PayrollRun $payrollRun
+        PayrollRun $payrollRun,
+        PayrollRunService $service
     ): RedirectResponse {
-        if (
-            $payrollRun->status !== 'draft'
-        ) {
+        try {
+            $service->confirm($payrollRun);
+
+            return back()->with(
+                'success',
+                'Payroll confirmed successfully.'
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
             return back()->with(
                 'error',
-                'Only draft payroll runs can be confirmed.'
+                'Unable to confirm payroll: '
+                    . $e->getMessage()
             );
         }
-
-        $payrollRun->update([
-            'status' => 'completed',
-        ]);
-
-        return back()->with(
-            'success',
-            'Payroll confirmed successfully.'
-        );
     }
 
     public function destroy(

@@ -6,12 +6,6 @@ use App\Models\Employee;
 use App\Models\PayrollRun;
 use Carbon\Carbon;
 
-use Illuminate\Support\Facades\DB;
-use App\Models\PayrollSetting;
-use App\Models\PayrollItem;
-use App\Models\SssContribution;
-use App\Models\PayrollScheduleDetail;
-
 class DeductionCalculator
 {
     public function __construct(
@@ -38,8 +32,7 @@ class DeductionCalculator
          * Government contribution minimum salary credit.
          *
          * PhilHealth:
-         * ₱10,000 × 2.5% = ₱250 total contribution.
-         * Employee share = 50% = ₱125.
+         * ₱10,000 × 2.5% = ₱250 employee contribution.
          *
          * Pag-IBIG:
          * ₱10,000 × 2% = ₱200 employee contribution.
@@ -56,7 +49,7 @@ class DeductionCalculator
             ! empty($employee->philhealth_no)
             && $employee->philhealth_deduction_cutoff === $payrollCutoff
         ) {
-            $philhealth = ($minimumSalaryCredit * 0.025) / 2;
+            $philhealth = $minimumSalaryCredit * 0.025;
         }
 
         if (

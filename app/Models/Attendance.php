@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Employee;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
-use App\Models\Employee;
 class Attendance extends Model
 {
+    use HasUuids;
+
     protected $table = 'attendance';
 
     public $incrementing = false;
@@ -31,17 +33,7 @@ class Attendance extends Model
         'time_in' => 'datetime',
         'time_out' => 'datetime',
         'segment_no' => 'integer',
-        
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (Attendance $attendance) {
-            if (! $attendance->getKey()) {
-                $attendance->setAttribute($attendance->getKeyName(), (string) Str::uuid());
-            }
-        });
-    }
 
     public function employee(): BelongsTo
     {

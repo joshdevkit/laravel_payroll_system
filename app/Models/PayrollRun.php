@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 use App\Models\PayrollItem;
+use App\Models\LoanDeduction;
+
+use App\Models\Branch;
 use App\Models\Category;
 class PayrollRun extends Model
 {
@@ -20,7 +23,7 @@ class PayrollRun extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'category_id',
+        'branch_id',
         'cutoff_start',
         'cutoff_end',
         'pay_date',
@@ -56,10 +59,20 @@ class PayrollRun extends Model
         );
     }
 
-    public function category()
+    public function branch()
     {
         return $this->belongsTo(
-            Category::class
+            Branch::class
         );
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function loanDeductions(): HasMany
+    {
+        return $this->hasMany(LoanDeduction::class);
     }
 }

@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Trash2 } from "lucide-react";
-import type { Category, PayrollRun } from "./types";
+import type { PayrollRun } from "./types";
 import {
     Select,
     SelectContent,
@@ -17,13 +17,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "../ui/select";
+import { Branch } from "../employees/BranchDialog";
 
 export function CreatePayrollRunDialog({
     open,
     onOpenChange,
-    categories,
-    selectedCategory,
-    onCategoryChange,
+    branches,
+    selectedBranch,
+    onBranchChange,
     cutoffStart,
     cutoffEnd,
     payDate,
@@ -35,9 +36,9 @@ export function CreatePayrollRunDialog({
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    categories: Category[];
-    selectedCategory: Category | null;
-    onCategoryChange: (category: Category | null) => void;
+    branches: Branch[];
+    selectedBranch: Branch | null;
+    onBranchChange: (branch: Branch | null) => void;
     cutoffStart: string;
     cutoffEnd: string;
     payDate: string;
@@ -61,31 +62,31 @@ export function CreatePayrollRunDialog({
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
                     <label className="grid gap-2 text-sm font-medium">
-                        Department
+                        Branch
                         <Select
-                            value={selectedCategory?.id.toString() ?? ""}
+                            value={selectedBranch?.id.toString() ?? ""}
                             onValueChange={(value) => {
-                                const category = categories.find(
-                                    (category) =>
-                                        category.id.toString() === value,
+                                const branch = branches.find(
+                                    (branch) =>
+                                        branch.id.toString() === value,
                                 );
 
-                                onCategoryChange(category ?? null);
+                                onBranchChange(branch ?? null);
                             }}
                         >
                             <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select a department">
-                                    {selectedCategory?.name}
+                                <SelectValue placeholder="Select a branch">
+                                    {selectedBranch?.name}
                                 </SelectValue>
                             </SelectTrigger>
 
                             <SelectContent>
-                                {categories.map((category) => (
+                                {branches.map((branch) => (
                                     <SelectItem
-                                        key={category.id}
-                                        value={category.id.toString()}
+                                        key={branch.id}
+                                        value={branch.id.toString()}
                                     >
-                                        {category.name}
+                                        {branch.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

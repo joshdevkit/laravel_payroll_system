@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthenticationController;
+use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\EmployeeAttendanceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeSssContributionController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\LoanAndCashAdvanceController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayrollSettingsController;
 use App\Http\Controllers\ProfileController;
@@ -70,4 +72,33 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
         ->name('categories.destroy');
+
+    Route::get(
+        '/employees/{employee}/loans-and-cash-advances',
+        [LoanAndCashAdvanceController::class, 'index']
+    )->name('employees.loans-and-cash-advances.index');
+
+    Route::post(
+        '/employees/{employee}/loans-and-cash-advances',
+        [LoanAndCashAdvanceController::class, 'store']
+    )->name('employees.loans-and-cash-advances.store');
+
+    Route::put(
+        '/employees/{employee}/loans-and-cash-advances/{loanAndCashAdvance}',
+        [LoanAndCashAdvanceController::class, 'update']
+    )->name('employees.loans-and-cash-advances.update');
+
+    Route::delete(
+        '/employees/{employee}/loans-and-cash-advances/{loanAndCashAdvance}',
+        [LoanAndCashAdvanceController::class, 'destroy']
+    )->name('employees.loans-and-cash-advances.destroy');
+
+    Route::post('/branches', [BranchController::class, 'store'])
+        ->name('branches.store');
+
+    Route::put('/branches/{branch}', [BranchController::class, 'update'])
+        ->name('branches.update');
+
+    Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])
+        ->name('branches.destroy');
 });

@@ -10,7 +10,6 @@ type EmployeeTableProps = {
 };
 
 export function EmployeeTable({ employees, onMenuToggle }: EmployeeTableProps) {
-    console.log('employees', employees);
     return (
         <div className="w-full overflow-x-auto overscroll-x-contain">
             <table className="w-full min-w-[760px] caption-bottom text-sm">
@@ -21,6 +20,9 @@ export function EmployeeTable({ employees, onMenuToggle }: EmployeeTableProps) {
                         </th>
                         <th className="h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-foreground sm:px-4">
                             Name
+                        </th>
+                        <th className="h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-foreground sm:px-4">
+                            Branch
                         </th>
                         <th className="h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-foreground sm:px-4">
                             Department

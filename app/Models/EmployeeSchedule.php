@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Employee;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
-use App\Models\Employee;
 class EmployeeSchedule extends Model
 {
+    use HasUuids;
+
     protected $table = 'employee_schedules';
 
     public $incrementing = false;
@@ -32,15 +34,6 @@ class EmployeeSchedule extends Model
         'break_minutes' => 'integer',
         'is_working_day' => 'boolean',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (EmployeeSchedule $schedule) {
-            if (! $schedule->getKey()) {
-                $schedule->setAttribute($schedule->getKeyName(), (string) Str::uuid());
-            }
-        });
-    }
 
     public function employee(): BelongsTo
     {
