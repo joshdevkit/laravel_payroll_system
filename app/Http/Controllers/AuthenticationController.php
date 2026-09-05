@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,15 +17,17 @@ class AuthenticationController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ],
-        [
-            'email.required' => 'Email cannot be empty',
-            'email.email' => 'Please enter a valid email address.',
-            'password.required' => 'Password cannot be empty',
-        ]);
+        $credentials = $request->validate(
+            [
+                'email' => ['required', 'email'],
+                'password' => ['required'],
+            ],
+            [
+                'email.required' => 'Email cannot be empty',
+                'email.email' => 'Please enter a valid email address.',
+                'password.required' => 'Password cannot be empty',
+            ]
+        );
 
         if (!Auth::attempt($credentials)) {
             return back()->withErrors([

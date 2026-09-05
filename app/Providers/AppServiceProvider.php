@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +28,37 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        Gate::before(function (User $user, string $ability) {
+            return $user->hasRole('manager')
+                ? true
+                : null;
+        });
+
+        Inertia::share([
+            'auth' => function () {
+                /**
+                 * @var \App\Models\User
+                 */
+                $user = Auth::user();
+
+                if (! $user) {
+                    return null;
+                }
+
+                return [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ],
+
+                    'roles' => $user->getRoleNames(),
+                    'permissions' => $user->getAllPermissions()
+                        ->pluck('name')
+                        ->values(),
+                ];
+            },
+        ]);
     }
 
     /**
@@ -37,14 +72,15 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
+        Password::defaults(
+            fn(): ?Password => app()->isProduction()
+                ? Password::min(12)
                 ->mixedCase()
                 ->letters()
                 ->numbers()
                 ->symbols()
                 ->uncompromised()
-            : null,
+                : null,
         );
     }
 }
