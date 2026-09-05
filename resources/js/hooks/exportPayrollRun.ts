@@ -115,36 +115,12 @@ const colaOf = (
 
 /*
 |--------------------------------------------------------------------------
-| Others Earnings
-|--------------------------------------------------------------------------
-|
-| Others Earnings =
-|
-| COLA
-| + Overtime
-| + Holiday
-| + Night Shift
-|
-|--------------------------------------------------------------------------
-*/
-
-const othersEarningsOf = (
-    item: PayrollItem,
-): number =>
-    colaOf(item) +
-    numberValue(item.overtime_pay) +
-    numberValue(item.holiday_pay) +
-    numberValue(item.night_diff);
-
-/*
-|--------------------------------------------------------------------------
 | Total Earnings
 |--------------------------------------------------------------------------
 |
-| Total Earnings =
+| Total Earnings = Basic Salary - Tardy
 |
-| Basic Salary - Tardy
-|
+| MATCHES: PayrollRegisterTable.totalEarningsOf
 |--------------------------------------------------------------------------
 */
 
@@ -162,18 +138,73 @@ const totalEarningsOf = (
 | Total Gross Earning =
 |
 | Total Earnings
-| + COLA
 | + Overtime Pay
 | + Holiday Pay
 | + Night Shift Pay
 |
+| COLA is NOT included here.
+|
+| MATCHES: PayrollRegisterTable.totalGrossEarningOf
 |--------------------------------------------------------------------------
 */
 
-const totalGrossOf = (
+const totalGrossEarningOf = (
     item: PayrollItem,
 ): number =>
     totalEarningsOf(item) +
+    numberValue(item.overtime_pay) +
+    numberValue(item.holiday_pay) +
+    numberValue(item.night_diff);
+
+/*
+|--------------------------------------------------------------------------
+| Total Deductions
+|--------------------------------------------------------------------------
+|
+| Total Deductions =
+|
+| PhilHealth
+| + Pag-IBIG
+| + SSS
+| + SSS Loan
+| + Pag-IBIG Loan
+| + Cash Advance
+| + Tardy
+|
+| MATCHES: PayrollRegisterTable.totalDeductionsOf
+|--------------------------------------------------------------------------
+*/
+
+const totalDeductionsOf = (
+    item: PayrollItem,
+): number =>
+    numberValue(item.philhealth_deduction) +
+    numberValue(item.pagibig_deduction) +
+    numberValue(item.sss_deduction) +
+    numberValue(item.sss_loan_deduction) +
+    numberValue(item.pagibig_loan_deduction) +
+    numberValue(item.cash_advance_deduction) +
+    numberValue(item.tardy_deduction);
+
+/*
+|--------------------------------------------------------------------------
+| Others Earnings
+|--------------------------------------------------------------------------
+|
+| Others =
+|
+| COLA
+| + Overtime Pay
+| + Holiday Pay
+| + Night Shift Pay
+|
+| MATCHES: PayrollRegisterTable.othersEarningsOf
+|--------------------------------------------------------------------------
+*/
+
+const othersEarningsOf = (
+    item: PayrollItem,
+): number =>
     colaOf(item) +
     numberValue(item.overtime_pay) +
     numberValue(item.holiday_pay) +
@@ -181,80 +212,25 @@ const totalGrossOf = (
 
 /*
 |--------------------------------------------------------------------------
-| Other Deductions
-|--------------------------------------------------------------------------
-|
-| Others =
-|
-| Other Deductions
-| + Tax Deduction
-| + Leave Deduction
-|
-|--------------------------------------------------------------------------
-*/
-
-const deductionOthersOf = (
-    item: PayrollItem,
-): number =>
-    numberValue(item.other_deductions) +
-    numberValue(item.tax_deduction) +
-    numberValue(item.leave_deduction);
-
-/*
-|--------------------------------------------------------------------------
-| Total Deductions
-|--------------------------------------------------------------------------
-|
-| DISPLAY ONLY.
-|
-| Total Deductions =
-|
-| Tardy
-| + SSS
-| + PhilHealth
-| + Pag-IBIG
-| + Other Deductions
-|
-|--------------------------------------------------------------------------
-*/
-
-const totalDeductionsOf = (
-    item: PayrollItem,
-): number =>
-    numberValue(item.tardy_deduction) +
-    numberValue(item.sss_deduction) +
-    numberValue(item.philhealth_deduction) +
-    numberValue(item.pagibig_deduction) +
-    numberValue(item.other_deductions);
-
-/*
-|--------------------------------------------------------------------------
 | Total Net Earnings
 |--------------------------------------------------------------------------
-|
-| BUSINESS RULE
 |
 | Total Net Earnings =
 |
 | Total Gross Earning
-| - PhilHealth
-| - Pag-IBIG
-| - SSS
-| - Cash Advance
+| + COLA
+| - Total Deductions
 |
-| Total Deductions is NOT used here.
-|
+| MATCHES: PayrollRegisterTable.totalNetEarningsOf
 |--------------------------------------------------------------------------
 */
 
-const netPayOf = (
+const totalNetEarningsOf = (
     item: PayrollItem,
 ): number =>
-    totalGrossOf(item) -
-    numberValue(item.philhealth_deduction) -
-    numberValue(item.pagibig_deduction) -
-    numberValue(item.sss_deduction) -
-    numberValue(item.cash_advance_deduction);
+    totalGrossEarningOf(item) +
+    colaOf(item) -
+    totalDeductionsOf(item);
 
 /*
 |--------------------------------------------------------------------------
@@ -299,7 +275,7 @@ const rateOf = (
 | M    Night Shift Pay
 | N    Total Gross Earning
 |
-| O-V  Deductions
+| O-U  Deductions
 |
 | O    PhilHealth
 | P    Pag-IBIG
@@ -307,13 +283,15 @@ const rateOf = (
 | R    SSS Loan
 | S    Pag-IBIG Loan
 | T    Cash Advance
-| U    Others
-| V    Total Deductions
+| U    Total Deductions
 |
-| W    Others Earnings
-| X    Total Net Earnings
-| Y    Signature
+| V    Others Earnings
+| W    Total Net Earnings
+| X    Signature
 |
+| This mirrors PayrollRegisterTable.tsx column-for-column
+| (there is no separate "other deductions" column, since the
+| table has none).
 |--------------------------------------------------------------------------
 */
 
@@ -335,7 +313,6 @@ const HEADER_ROW_1 = [
     '',
 
     'Deductions',
-    '',
     '',
     '',
     '',
@@ -371,7 +348,6 @@ const HEADER_ROW_2 = [
     'Loans',
     '',
     'Cash Advance',
-    'Others',
     'Total Deductions',
 
     '',
@@ -399,9 +375,8 @@ const HEADER_ROW_3 = [
     'PhilHealth',
     'Pag-IBIG',
     'SSS',
-    'SSS',
-    'Pag-IBIG',
-    '',
+    'SSS Loan',
+    'Pag-IBIG Loan',
     '',
     '',
 
@@ -439,7 +414,7 @@ export function exportPayrollRunToExcel(
             totalEarningsOf(item);
 
         const totalGross =
-            totalGrossOf(item);
+            totalGrossEarningOf(item);
 
         const totalDeductions =
             totalDeductionsOf(item);
@@ -447,163 +422,86 @@ export function exportPayrollRunToExcel(
         const othersEarnings =
             othersEarningsOf(item);
 
-        const netPay =
-            netPayOf(item);
+        const netEarnings =
+            totalNetEarningsOf(item);
 
         rows.push([
-            /*
-             * A - No.
-             */
+            /* A - No. */
             index + 1,
 
-            /*
-             * B - Employee ID
-             */
+            /* B - Employee ID */
             item.employee?.employee_id ??
                 item.employee_id,
 
-            /*
-             * C - Employee Name
-             */
+            /* C - Employee Name */
             item.employee?.full_name ??
                 '',
 
-            /*
-             * D - Department
-             *
-             * Display the category/department name.
-             */
+            /* D - Department */
             item.employee?.category?.name ??
                 '',
 
             /*
              * E - No. of Days
-             *
-             * IMPORTANT:
-             * This is a NUMBER, not currency.
+             * IMPORTANT: This is a NUMBER, not currency.
              */
-            numberValue(
-                item.present_days,
-            ),
+            numberValue(item.present_days),
 
-            /*
-             * F - Rate
-             */
+            /* F - Rate */
             rateOf(item),
 
-            /*
-             * G - Basic Salary
-             */
-            numberValue(
-                item.basic_pay,
-            ),
+            /* G - Basic Salary */
+            numberValue(item.basic_pay),
 
-            /*
-             * H - Tardy
-             */
-            numberValue(
-                item.tardy_deduction,
-            ),
+            /* H - Tardy */
+            numberValue(item.tardy_deduction),
 
-            /*
-             * I - Total Earnings
-             */
+            /* I - Total Earnings */
             totalEarnings,
 
-            /*
-             * J - COLA
-             */
+            /* J - COLA */
             colaOf(item),
 
-            /*
-             * K - Overtime Pay
-             */
-            numberValue(
-                item.overtime_pay,
-            ),
+            /* K - Overtime Pay */
+            numberValue(item.overtime_pay),
 
-            /*
-             * L - Holiday Pay
-             */
-            numberValue(
-                item.holiday_pay,
-            ),
+            /* L - Holiday Pay */
+            numberValue(item.holiday_pay),
 
-            /*
-             * M - Night Shift Pay
-             */
-            numberValue(
-                item.night_diff,
-            ),
+            /* M - Night Shift Pay */
+            numberValue(item.night_diff),
 
-            /*
-             * N - Total Gross Earning
-             */
+            /* N - Total Gross Earning */
             totalGross,
 
-            /*
-             * O - PhilHealth
-             */
-            numberValue(
-                item.philhealth_deduction,
-            ),
+            /* O - PhilHealth */
+            numberValue(item.philhealth_deduction),
 
-            /*
-             * P - Pag-IBIG
-             */
-            numberValue(
-                item.pagibig_deduction,
-            ),
+            /* P - Pag-IBIG */
+            numberValue(item.pagibig_deduction),
 
-            /*
-             * Q - SSS
-             */
-            numberValue(
-                item.sss_deduction,
-            ),
+            /* Q - SSS */
+            numberValue(item.sss_deduction),
 
-            /*
-             * R - SSS Loan
-             */
-            0,
+            /* R - SSS Loan */
+            numberValue(item.sss_loan_deduction),
 
-            /*
-             * S - Pag-IBIG Loan
-             */
-            0,
+            /* S - Pag-IBIG Loan */
+            numberValue(item.pagibig_loan_deduction),
 
-            /*
-             * T - Cash Advance
-             */
-            numberValue(
-                item.cash_advance_deduction,
-            ),
+            /* T - Cash Advance */
+            numberValue(item.cash_advance_deduction),
 
-            /*
-             * U - Others
-             */
-            deductionOthersOf(item),
-
-            /*
-             * V - Total Deductions
-             *
-             * DISPLAY ONLY.
-             */
+            /* U - Total Deductions */
             totalDeductions,
 
-            /*
-             * W - Others Earnings
-             */
+            /* V - Others Earnings */
             othersEarnings,
 
-            /*
-             * X - Total Net Earnings
-             */
-            netPay,
+            /* W - Total Net Earnings */
+            netEarnings,
 
-            /*
-             * Y - Signature
-             */
+            /* X - Signature */
             '',
         ]);
     });
@@ -641,13 +539,12 @@ export function exportPayrollRunToExcel(
         0, // R - SSS Loan
         0, // S - Pag-IBIG Loan
         0, // T - Cash Advance
-        0, // U - Others
-        0, // V - Total Deductions
+        0, // U - Total Deductions
 
-        0, // W - Others Earnings
-        0, // X - Net Earnings
+        0, // V - Others Earnings
+        0, // W - Net Earnings
 
-        '', // Y - Signature
+        '', // X - Signature
     ]);
 
     const worksheet =
@@ -660,13 +557,13 @@ export function exportPayrollRunToExcel(
     |
     | I = G - H
     |
-    | N = I + J + K + L + M
+    | N = I + K + L + M                    (no COLA - matches table)
     |
-    | V = H + O + P + Q + R + S + T + U
+    | U = H + O + P + Q + R + S + T         (Tardy + all deductions)
     |
-    | W = J + K + L + M
+    | V = J + K + L + M                     (COLA + OT + Holiday + NSD)
     |
-    | X = N - O - P - Q - T
+    | W = N + J - U                         (Gross + COLA - Total Deductions)
     |
     |--------------------------------------------------------------------------
     */
@@ -691,27 +588,28 @@ export function exportPayrollRunToExcel(
          * N - Total Gross Earning
          *
          * Total Earnings
-         * + COLA
          * + OT
          * + Holiday
          * + NSD
+         *
+         * COLA intentionally excluded, matching the table.
          */
         worksheet[`N${row}`] = {
             t: 'n',
             f:
                 `I${row}+` +
-                `J${row}+` +
                 `K${row}+` +
                 `L${row}+` +
                 `M${row}`,
         };
 
         /*
-         * V - Total Deductions
+         * U - Total Deductions
          *
-         * DISPLAY ONLY.
+         * Tardy + PhilHealth + Pag-IBIG + SSS
+         * + SSS Loan + Pag-IBIG Loan + Cash Advance
          */
-        worksheet[`V${row}`] = {
+        worksheet[`U${row}`] = {
             t: 'n',
             f:
                 `H${row}+` +
@@ -720,14 +618,15 @@ export function exportPayrollRunToExcel(
                 `Q${row}+` +
                 `R${row}+` +
                 `S${row}+` +
-                `T${row}+` +
-                `U${row}`,
+                `T${row}`,
         };
 
         /*
-         * W - Others Earnings
+         * V - Others Earnings
+         *
+         * COLA + OT + Holiday + NSD
          */
-        worksheet[`W${row}`] = {
+        worksheet[`V${row}`] = {
             t: 'n',
             f:
                 `J${row}+` +
@@ -737,22 +636,18 @@ export function exportPayrollRunToExcel(
         };
 
         /*
-         * X - Total Net Earnings
+         * W - Total Net Earnings
          *
-         * Gross
-         * - PhilHealth
-         * - Pag-IBIG
-         * - SSS
-         * - Cash Advance
+         * Total Gross Earning
+         * + COLA
+         * - Total Deductions
          */
-        worksheet[`X${row}`] = {
+        worksheet[`W${row}`] = {
             t: 'n',
             f:
-                `N${row}-` +
-                `O${row}-` +
-                `P${row}-` +
-                `Q${row}-` +
-                `T${row}`,
+                `N${row}+` +
+                `J${row}-` +
+                `U${row}`,
         };
     });
 
@@ -782,7 +677,6 @@ export function exportPayrollRunToExcel(
         'U',
         'V',
         'W',
-        'X',
     ];
 
     numericColumns.forEach(
@@ -817,7 +711,7 @@ export function exportPayrollRunToExcel(
     };
 
     worksheet[
-        `Y${footerRow}`
+        `X${footerRow}`
     ] = {
         t: 's',
         v: '',
@@ -850,70 +744,40 @@ export function exportPayrollRunToExcel(
          * Earnings
          */
         {
-            s: {
-                r: 0,
-                c: 4,
-            },
-            e: {
-                r: 0,
-                c: 13,
-            },
+            s: { r: 0, c: 4 },
+            e: { r: 0, c: 13 },
         },
 
         /*
          * Deductions
          */
         {
-            s: {
-                r: 0,
-                c: 14,
-            },
-            e: {
-                r: 0,
-                c: 21,
-            },
+            s: { r: 0, c: 14 },
+            e: { r: 0, c: 20 },
         },
 
         /*
          * Others
          */
         {
-            s: {
-                r: 0,
-                c: 22,
-            },
-            e: {
-                r: 2,
-                c: 22,
-            },
+            s: { r: 0, c: 21 },
+            e: { r: 2, c: 21 },
         },
 
         /*
          * Total Net Earnings
          */
         {
-            s: {
-                r: 0,
-                c: 23,
-            },
-            e: {
-                r: 2,
-                c: 23,
-            },
+            s: { r: 0, c: 22 },
+            e: { r: 2, c: 22 },
         },
 
         /*
          * Signature
          */
         {
-            s: {
-                r: 0,
-                c: 24,
-            },
-            e: {
-                r: 2,
-                c: 24,
-            },
+            s: { r: 0, c: 23 },
+            e: { r: 2, c: 23 },
         },
 
         /*
@@ -937,70 +801,32 @@ export function exportPayrollRunToExcel(
          * Contribution
          */
         {
-            s: {
-                r: 1,
-                c: 14,
-            },
-            e: {
-                r: 1,
-                c: 16,
-            },
+            s: { r: 1, c: 14 },
+            e: { r: 1, c: 16 },
         },
 
         /*
          * Loans
          */
         {
-            s: {
-                r: 1,
-                c: 17,
-            },
-            e: {
-                r: 1,
-                c: 18,
-            },
+            s: { r: 1, c: 17 },
+            e: { r: 1, c: 18 },
         },
 
         /*
          * Cash Advance
          */
         {
-            s: {
-                r: 1,
-                c: 19,
-            },
-            e: {
-                r: 2,
-                c: 19,
-            },
-        },
-
-        /*
-         * Others Deductions
-         */
-        {
-            s: {
-                r: 1,
-                c: 20,
-            },
-            e: {
-                r: 2,
-                c: 20,
-            },
+            s: { r: 1, c: 19 },
+            e: { r: 2, c: 19 },
         },
 
         /*
          * Total Deductions
          */
         {
-            s: {
-                r: 1,
-                c: 21,
-            },
-            e: {
-                r: 2,
-                c: 21,
-            },
+            s: { r: 1, c: 20 },
+            e: { r: 2, c: 20 },
         },
     ];
 
@@ -1081,17 +907,17 @@ export function exportPayrollRunToExcel(
                      * B = Employee ID
                      * I = Total Earnings
                      * N = Total Gross
-                     * V = Total Deductions
-                     * W = Others
-                     * X = Total Net Earnings
+                     * U = Total Deductions
+                     * V = Others
+                     * W = Total Net Earnings
                      */
                     bold:
                         columnIndex === 1 ||
                         columnIndex === 8 ||
                         columnIndex === 13 ||
+                        columnIndex === 20 ||
                         columnIndex === 21 ||
-                        columnIndex === 22 ||
-                        columnIndex === 23,
+                        columnIndex === 22,
 
                     /*
                      * Left aligned:
@@ -1176,7 +1002,7 @@ export function exportPayrollRunToExcel(
     | F = Rate
     | G = Basic Salary
     | ...
-    | X = Net Earnings
+    | W = Net Earnings
     |
     |--------------------------------------------------------------------------
     */
@@ -1200,7 +1026,6 @@ export function exportPayrollRunToExcel(
         'U',
         'V',
         'W',
-        'X',
     ];
 
     /*
@@ -1267,10 +1092,7 @@ export function exportPayrollRunToExcel(
 
     worksheet['!ref'] =
         XLSX.utils.encode_range({
-            s: {
-                r: 0,
-                c: 0,
-            },
+            s: { r: 0, c: 0 },
             e: {
                 r: footerRow - 1,
                 c: COLUMN_COUNT - 1,
@@ -1306,12 +1128,11 @@ export function exportPayrollRunToExcel(
         { wch: 10 },  // R - SSS Loan
         { wch: 12 },  // S - Pag-IBIG Loan
         { wch: 13 },  // T - Cash Advance
-        { wch: 11 },  // U - Others
-        { wch: 15 },  // V - Total Deductions
+        { wch: 15 },  // U - Total Deductions
 
-        { wch: 13 },  // W - Others
-        { wch: 16 },  // X - Net Earnings
-        { wch: 16 },  // Y - Signature
+        { wch: 13 },  // V - Others
+        { wch: 16 },  // W - Net Earnings
+        { wch: 16 },  // X - Signature
     ];
 
     /*
