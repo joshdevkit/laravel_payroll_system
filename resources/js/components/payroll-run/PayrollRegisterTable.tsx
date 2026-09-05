@@ -77,7 +77,7 @@ export function PayrollRegisterTable({ items }: Props) {
             totalEarningsOf(item) +
             number(item.overtime_pay) +
             number(item.holiday_pay) +
-            number(item.night_diff)
+            number(item.night_diff) + number(item.cola)
         );
     };
 
@@ -152,7 +152,7 @@ export function PayrollRegisterTable({ items }: Props) {
 
     const totalNetEarningsOf = (item: PayrollItem): number => {
         return (
-            totalGrossEarningOf(item) + colaOf(item) - totalDeductionsOf(item)
+            totalGrossEarningOf(item)  - totalDeductionsOf(item)
         );
     };
 

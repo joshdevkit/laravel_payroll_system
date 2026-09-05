@@ -19,16 +19,62 @@ class PayrollCalculator
 
     /**
      * Calculate the complete payroll for one employee.
+     *
+     * IMPORTANT:
+     * This calculation is intentionally aligned with the
+     * PayrollRegisterTable formulas.
+     *
+     * Payroll Register Formula:
+     *
+     * Total Earnings
+     *     = Basic Salary - Tardy
+     *
+     * Total Gross Earning
+     *     = Total Earnings
+     *     + Overtime Pay
+     *     + Holiday Pay
+     *     + Night Shift Pay
+     *
+     * COLA
+     *     = COLA Amount × Present Days
+     *
+     * Total Deductions
+     *     = PhilHealth
+     *     + Pag-IBIG
+     *     + SSS
+     *     + SSS Loan
+     *     + Pag-IBIG Loan
+     *     + Cash Advance
+     *     + Tardy
+     *
+     * Total Net Earnings
+     *     = Total Gross Earning
+     *     + COLA
+     *     - Total Deductions
      */
     public function calculate(
         PayrollRun $run,
         PayrollSetting $settings,
         Employee $employee
     ): PayrollCalculationResult {
-        $start = Carbon::parse($run->cutoff_start)->toDateString();
-        $end = Carbon::parse($run->cutoff_end)->toDateString();
+        $start = Carbon::parse(
+            $run->cutoff_start
+        )->toDateString();
 
-        $rate = $this->calculateDailyRate($employee, $settings);
+        $end = Carbon::parse(
+            $run->cutoff_end
+        )->toDateString();
+
+        /*
+         * ---------------------------------------------------------
+         * DAILY / HOURLY RATE
+         * ---------------------------------------------------------
+         */
+
+        $rate = $this->calculateDailyRate(
+            $employee,
+            $settings
+        );
 
         $dailyWorkHours = max(
             1,
@@ -56,13 +102,29 @@ class PayrollCalculator
          */
         $regularMinutes = array_sum(
             array_map(
-                static fn(array $detail): int =>
-                (int) ($detail['regularMinutes'] ?? 0),
+                static fn (array $detail): int =>
+                    (int) ($detail['regularMinutes'] ?? 0),
                 $attendance->details()
             )
         );
 
-        $basicPay = ($regularMinutes / 60) * $hourlyRate;
+        $basicPay = (
+            $regularMinutes / 60
+        ) * $hourlyRate;
+
+        /*
+         * ---------------------------------------------------------
+         * ATTENDANCE VALUES
+         * ---------------------------------------------------------
+         */
+
+        $presentDays = (float) $attendance->presentDays();
+
+        $tardyDeduction = (float) $attendance->tardyDeduction();
+
+        $overtimePay = (float) $attendance->overtimePay();
+
+        $nightDiffPay = (float) $attendance->nightDiffPay();
 
         /*
          * ---------------------------------------------------------
@@ -92,25 +154,75 @@ class PayrollCalculator
             $rate
         );
 
+        $holidayPay = (float) $holiday->pay();
+
         /*
          * ---------------------------------------------------------
-         * EARNINGS
+         * COLA
          * ---------------------------------------------------------
          *
-         * IMPORTANT:
-         * Tardy is NOT deducted here.
+         * Only employees marked as COLA eligible receive COLA.
          *
-         * The tardy amount is stored separately in
-         * tardy_deduction and will be applied by the frontend
-         * when displaying Total Earnings / Net Earnings.
+         * Formula:
+         *
+         *     COLA Amount × Number of Present Days
+         *
+         * Example:
+         *
+         *     cola_amount       = 50.00
+         *     present_days      = 12
+         *
+         *     COLA = 50 × 12
+         *          = 600.00
+         */
+
+        $colaAmount = $employee->is_cola_eligible
+            ? (float) ($employee->cola_amount ?? 0)
+            : 0.0;
+
+        $cola = $colaAmount * $presentDays;
+
+        /*
+         * ---------------------------------------------------------
+         * TOTAL EARNINGS
+         * ---------------------------------------------------------
+         *
+         * EXACTLY MATCHES PayrollRegisterTable:
+         *
+         *     Basic Salary - Tardy
+         *
+         * IMPORTANT:
+         *
+         * Overtime, holiday and night differential are NOT
+         * included here yet.
+         *
+         * They are added in Total Gross Earning below.
          */
 
         $totalEarnings =
             $basicPay
-            + $attendance->overtimePay()
-            + $holiday->pay()
-            + $attendance->nightDiffPay()
-            + $leave->pay();
+            - $tardyDeduction;
+
+        /*
+         * ---------------------------------------------------------
+         * TOTAL GROSS EARNING
+         * ---------------------------------------------------------
+         *
+         * EXACTLY MATCHES PayrollRegisterTable:
+         *
+         *     Total Earnings
+         *     + Overtime
+         *     + Holiday
+         *     + Night Shift
+         *
+         * COLA is intentionally NOT included here.
+         */
+
+        $totalGrossEarning =
+            $totalEarnings
+            + $overtimePay
+            + $holidayPay
+            + $nightDiffPay;
 
         /*
          * ---------------------------------------------------------
@@ -121,7 +233,7 @@ class PayrollCalculator
         $deductions = $this->deductionCalculator->calculate(
             $employee,
             $run,
-            $attendance->tardyDeduction()
+            $tardyDeduction
         );
 
         /*
@@ -129,13 +241,11 @@ class PayrollCalculator
          * LOAN / CASH ADVANCE DEDUCTIONS
          * ---------------------------------------------------------
          *
-         * These are only CALCULATED here.
+         * These are calculated only.
          *
-         * We DO NOT modify the loan balance while calculating
-         * a payroll draft.
+         * Loan balances are NOT modified here.
          *
-         * Actual balance reduction should happen when payroll
-         * is finalized/posted.
+         * Actual posting happens when payroll is confirmed.
          */
 
         $loanDeductions = $this->calculateLoanDeductions(
@@ -143,41 +253,80 @@ class PayrollCalculator
             $run
         );
 
-        $cashAdvance = $loanDeductions['cash_advance'];
-        $sssLoan = $loanDeductions['sss_loan'];
-        $pagibigLoan = $loanDeductions['pagibig_loan'];
+        $cashAdvance = (float) $loanDeductions['cash_advance'];
+
+        $sssLoan = (float) $loanDeductions['sss_loan'];
+
+        $pagibigLoan = (float) $loanDeductions['pagibig_loan'];
 
         /*
          * ---------------------------------------------------------
          * TOTAL DEDUCTIONS
          * ---------------------------------------------------------
          *
-         * Tardy is NOT included in the total deduction calculation.
+         * EXACTLY MATCHES PayrollRegisterTable:
          *
-         * It is stored separately as tardy_deduction and handled
-         * by the frontend presentation.
+         *     PhilHealth
+         *     + Pag-IBIG
+         *     + SSS
+         *     + SSS Loan
+         *     + Pag-IBIG Loan
+         *     + Cash Advance
+         *     + Tardy
+         *
+         * Tardy is included here because the register explicitly
+         * includes it in Total Deductions.
          */
 
-        $statutoryDeductions = $deductions->total();
+        $statutoryDeductions =
+            (float) $deductions->philhealth()
+            + (float) $deductions->pagibig()
+            + (float) $deductions->sss();
 
         $totalDeductions =
             $statutoryDeductions
-            + $cashAdvance
             + $sssLoan
-            + $pagibigLoan;
+            + $pagibigLoan
+            + $cashAdvance
+            + $tardyDeduction;
 
         /*
          * ---------------------------------------------------------
-         * NET PAY
+         * TOTAL NET EARNINGS
          * ---------------------------------------------------------
          *
-         * Backend net pay is calculated before tardy.
+         * EXACTLY MATCHES PayrollRegisterTable:
          *
-         * Frontend will subtract tardy when displaying the
-         * employee's final net earnings.
+         *     Total Gross Earning
+         *     + COLA
+         *     - Total Deductions
          */
 
-        $netPay = $totalEarnings - $totalDeductions;
+        $netPay =
+            $totalGrossEarning
+            + $cola
+            - $totalDeductions;
+
+        /*
+         * ---------------------------------------------------------
+         * OTHERS
+         * ---------------------------------------------------------
+         *
+         * Matches PayrollRegisterTable:
+         *
+         *     COLA
+         *     + Overtime
+         *     + Holiday
+         *     + Night Shift
+         *
+         * This is a DISPLAY subtotal.
+         */
+
+        $others =
+            $cola
+            + $overtimePay
+            + $holidayPay
+            + $nightDiffPay;
 
         /*
          * ---------------------------------------------------------
@@ -186,149 +335,217 @@ class PayrollCalculator
          */
 
         $summary = [
+            /*
+             * Attendance
+             */
             'presentDays' =>
-            $attendance->presentDays(),
+                $attendance->presentDays(),
 
             'absentDays' =>
-            $attendance->absentDays(),
-
-            'leaveDays' =>
-            $leave->totalDays(),
-
-            'paidLeaveDays' =>
-            $leave->paidDays(),
-
-            'unpaidLeaveDays' =>
-            $leave->unpaidDays(),
-
-            'holidayDays' =>
-            $holiday->days(),
+                $attendance->absentDays(),
 
             'lateMinutes' =>
-            $attendance->lateMinutes(),
+                $attendance->lateMinutes(),
 
             'tardyMinutes' =>
-            $attendance->lateMinutes(),
+                $attendance->lateMinutes(),
+
+            'undertimeMinutes' =>
+                $attendance->undertimeMinutes(),
+
+            'overtimeMinutes' =>
+                $attendance->overtimeMinutes(),
+
+            'nightDiffMinutes' =>
+                $attendance->nightDiffMinutes(),
 
             /*
-             * Tardy remains available as a separate value.
+             * Tardy
              */
             'tardyDeduction' =>
-            $this->money(
-                $attendance->tardyDeduction()
-            ),
+                $this->money(
+                    $tardyDeduction
+                ),
+
+            /*
+             * Leave
+             */
+            'leaveDays' =>
+                $leave->totalDays(),
+
+            'paidLeaveDays' =>
+                $leave->paidDays(),
+
+            'unpaidLeaveDays' =>
+                $leave->unpaidDays(),
+
+            /*
+             * Holiday
+             */
+            'holidayDays' =>
+                $holiday->days(),
 
             /*
              * Government contributions
              */
             'sssDeduction' =>
-            $this->money(
-                $deductions->sss()
-            ),
+                $this->money(
+                    $deductions->sss()
+                ),
 
             'philhealthDeduction' =>
-            $this->money(
-                $deductions->philhealth()
-            ),
+                $this->money(
+                    $deductions->philhealth()
+                ),
 
             'pagibigDeduction' =>
-            $this->money(
-                $deductions->pagibig()
-            ),
+                $this->money(
+                    $deductions->pagibig()
+                ),
+
+            'taxDeduction' =>
+                $this->money(
+                    $deductions->tax()
+                ),
+
+            'leaveDeduction' =>
+                $this->money(
+                    $deductions->leave()
+                ),
+
+            'otherDeductions' =>
+                $this->money(
+                    $deductions->other()
+                ),
 
             /*
-             * Loans / cash advance
+             * Loans / Cash Advance
              */
             'cashAdvance' =>
-            $this->money($cashAdvance),
+                $this->money(
+                    $cashAdvance
+                ),
 
             'sssLoan' =>
-            $this->money($sssLoan),
+                $this->money(
+                    $sssLoan
+                ),
 
             'pagibigLoan' =>
-            $this->money($pagibigLoan),
-
-            /*
-             * Attendance
-             */
-            'undertimeMinutes' =>
-            $attendance->undertimeMinutes(),
-
-            'overtimeMinutes' =>
-            $attendance->overtimeMinutes(),
-
-            'nightDiffMinutes' =>
-            $attendance->nightDiffMinutes(),
+                $this->money(
+                    $pagibigLoan
+                ),
 
             /*
              * Earnings
              */
-            'overtimePay' =>
-            $this->money(
-                $attendance->overtimePay()
-            ),
+            'basicPay' =>
+                $this->money(
+                    $basicPay
+                ),
 
-            'nightDiffPay' =>
-            $this->money(
-                $attendance->nightDiffPay()
-            ),
+            'overtimePay' =>
+                $this->money(
+                    $overtimePay
+                ),
 
             'holidayPay' =>
-            $this->money(
-                $holiday->pay()
-            ),
+                $this->money(
+                    $holidayPay
+                ),
+
+            'nightDiffPay' =>
+                $this->money(
+                    $nightDiffPay
+                ),
 
             'leavePay' =>
-            $this->money(
-                $leave->pay()
-            ),
+                $this->money(
+                    $leave->pay()
+                ),
+
+            /*
+             * COLA
+             */
+            'isColaEligible' =>
+                (bool) $employee->is_cola_eligible,
+
+            'colaAmount' =>
+                $this->money(
+                    $colaAmount
+                ),
+
+            'colaDays' =>
+                $this->money(
+                    $presentDays
+                ),
+
+            'cola' =>
+                $this->money(
+                    $cola
+                ),
 
             /*
              * Work summary
              */
             'scheduledWorkdays' =>
-            $attendance->scheduledWorkdays(),
+                $attendance->scheduledWorkdays(),
 
             'paidDays' =>
-            $attendance->presentDays()
+                $attendance->presentDays()
                 + $leave->paidDays(),
 
             'regularMinutes' =>
-            $regularMinutes,
+                $regularMinutes,
 
             'regularHours' =>
-            round(
-                $regularMinutes / 60,
-                2
-            ),
+                round(
+                    $regularMinutes / 60,
+                    2
+                ),
 
             /*
-             * Payroll totals
+             * Payroll Register calculations
              *
-             * These values are BEFORE frontend tardy deduction.
+             * These MUST match PayrollRegisterTable.
              */
+
             'totalEarnings' =>
-            $this->money($totalEarnings),
+                $this->money(
+                    $totalEarnings
+                ),
+
+            'totalGrossEarning' =>
+                $this->money(
+                    $totalGrossEarning
+                ),
 
             'totalDeductions' =>
-            $this->money($totalDeductions),
+                $this->money(
+                    $totalDeductions
+                ),
+
+            'others' =>
+                $this->money(
+                    $others
+                ),
 
             'netPay' =>
-            $this->money($netPay),
+                $this->money(
+                    $netPay
+                ),
 
             /*
              * Detailed loan information.
-             *
-             * Useful for payroll review.
              */
             'loanDeductions' =>
-            $loanDeductions['details'],
+                $loanDeductions['details'],
 
             /*
-             * Schedule details
+             * Schedule details.
              */
             'scheduleDetails' =>
-            $attendance->details(),
+                $attendance->details(),
         ];
 
         /*
@@ -339,145 +556,169 @@ class PayrollCalculator
 
         $item = [
             'employee_id' =>
-            $employee->id,
+                $employee->id,
 
+            /*
+             * Work summary
+             */
             'scheduled_workdays' =>
-            $attendance->scheduledWorkdays(),
+                $attendance->scheduledWorkdays(),
 
             'present_days' =>
-            $attendance->presentDays(),
+                $attendance->presentDays(),
 
             'absent_days' =>
-            $attendance->absentDays(),
+                $attendance->absentDays(),
 
             'leave_days' =>
-            $leave->totalDays(),
+                $leave->totalDays(),
 
             'paid_leave_days' =>
-            $leave->paidDays(),
+                $leave->paidDays(),
 
             'unpaid_leave_days' =>
-            $leave->unpaidDays(),
+                $leave->unpaidDays(),
 
             'holiday_days' =>
-            $holiday->days(),
+                $holiday->days(),
 
             'late_minutes' =>
-            $attendance->lateMinutes(),
+                $attendance->lateMinutes(),
 
             'undertime_minutes' =>
-            $attendance->undertimeMinutes(),
+                $attendance->undertimeMinutes(),
 
             'overtime_minutes' =>
-            $attendance->overtimeMinutes(),
+                $attendance->overtimeMinutes(),
 
             'night_diff_minutes' =>
-            $attendance->nightDiffMinutes(),
+                $attendance->nightDiffMinutes(),
 
             /*
              * Earnings
              */
             'basic_pay' =>
-            $this->money($basicPay),
+                $this->money(
+                    $basicPay
+                ),
 
             'overtime_pay' =>
-            $this->money(
-                $attendance->overtimePay()
-            ),
+                $this->money(
+                    $overtimePay
+                ),
 
             'holiday_pay' =>
-            $this->money(
-                $holiday->pay()
-            ),
+                $this->money(
+                    $holidayPay
+                ),
 
             'night_diff' =>
-            $this->money(
-                $attendance->nightDiffPay()
-            ),
+                $this->money(
+                    $nightDiffPay
+                ),
 
             'leave_pay' =>
-            $this->money(
-                $leave->pay()
-            ),
+                $this->money(
+                    $leave->pay()
+                ),
 
-            'bonus' => 0,
+            'bonus' =>
+                0,
+
+            /*
+             * COLA
+             *
+             * This requires the cola column to exist
+             * in payroll_items.
+             */
+
+            'cola' =>
+                $this->money(
+                    $cola
+                ),
 
             /*
              * Government deductions
              */
             'sss_deduction' =>
-            $this->money(
-                $deductions->sss()
-            ),
+                $this->money(
+                    $deductions->sss()
+                ),
 
             'philhealth_deduction' =>
-            $this->money(
-                $deductions->philhealth()
-            ),
+                $this->money(
+                    $deductions->philhealth()
+                ),
 
             'pagibig_deduction' =>
-            $this->money(
-                $deductions->pagibig()
-            ),
+                $this->money(
+                    $deductions->pagibig()
+                ),
 
             'tax_deduction' =>
-            $this->money(
-                $deductions->tax()
-            ),
+                $this->money(
+                    $deductions->tax()
+                ),
 
             'leave_deduction' =>
-            $this->money(
-                $deductions->leave()
-            ),
+                $this->money(
+                    $deductions->leave()
+                ),
 
             'other_deductions' =>
-            $this->money(
-                $deductions->other()
-            ),
+                $this->money(
+                    $deductions->other()
+                ),
 
             /*
-             * Attendance deduction
-             *
-             * IMPORTANT:
-             * This is stored separately and is NOT included
-             * in total_deductions.
+             * Tardy
              */
             'tardy_deduction' =>
-            $this->money(
-                $attendance->tardyDeduction()
-            ),
+                $this->money(
+                    $tardyDeduction
+                ),
 
             /*
-             * Loan / cash advance deductions
+             * Loan / Cash Advance deductions
              */
             'cash_advance_deduction' =>
-            $this->money($cashAdvance),
+                $this->money(
+                    $cashAdvance
+                ),
 
             'sss_loan_deduction' =>
-            $this->money($sssLoan),
+                $this->money(
+                    $sssLoan
+                ),
 
             'pagibig_loan_deduction' =>
-            $this->money($pagibigLoan),
+                $this->money(
+                    $pagibigLoan
+                ),
 
             /*
-             * Totals
-             *
-             * These are BEFORE frontend tardy deduction.
+             * Payroll Register totals
              */
             'total_earnings' =>
-            $this->money($totalEarnings),
+                $this->money(
+                    $totalEarnings
+                ),
 
             'total_deductions' =>
-            $this->money($totalDeductions),
+                $this->money(
+                    $totalDeductions
+                ),
 
             'net_pay' =>
-            $this->money($netPay),
+                $this->money(
+                    $netPay
+                ),
 
             /*
              * Complete calculation snapshot.
              */
             'calculation_snapshot' =>
-            $summary,
+                $summary,
         ];
 
         return new PayrollCalculationResult(
@@ -507,13 +748,27 @@ class PayrollCalculator
         )->startOfDay();
 
         $loans = LoanAndCashAdvance::query()
-            ->where('employee_id', $employee->id)
-            ->where('status', 'active')
-            ->whereDate('start_date', '<=', $payDate)
+            ->where(
+                'employee_id',
+                $employee->id
+            )
+            ->where(
+                'status',
+                'active'
+            )
+            ->whereDate(
+                'start_date',
+                '<=',
+                $payDate
+            )
             ->where(function ($query) use ($payDate) {
                 $query
                     ->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $payDate);
+                    ->orWhereDate(
+                        'end_date',
+                        '>=',
+                        $payDate
+                    );
             })
             ->get();
 
@@ -524,6 +779,7 @@ class PayrollCalculator
         $details = [];
 
         foreach ($loans as $loan) {
+
             /*
              * Determine whether this loan should be deducted
              * on this payroll cutoff.
@@ -555,6 +811,7 @@ class PayrollCalculator
             }
 
             switch ($loan->type) {
+
                 case 'cash_advance':
                     $cashAdvance += $amount;
                     break;
@@ -570,67 +827,76 @@ class PayrollCalculator
 
             $details[] = [
                 'loan_id' =>
-                $loan->id,
+                    $loan->id,
 
                 'type' =>
-                $loan->type,
+                    $loan->type,
 
                 'reference_no' =>
-                $loan->reference_no,
+                    $loan->reference_no,
 
                 'principal_amount' =>
-                $this->money(
-                    (float) $loan->principal_amount
-                ),
+                    $this->money(
+                        (float) $loan->principal_amount
+                    ),
 
                 'balance_before' =>
-                $this->money(
-                    (float) $loan->balance
-                ),
+                    $this->money(
+                        (float) $loan->balance
+                    ),
 
                 'scheduled_amount' =>
-                $this->money(
-                    (float) $loan->deduction_amount
-                ),
+                    $this->money(
+                        (float) $loan->deduction_amount
+                    ),
 
                 'deduction_amount' =>
-                $this->money($amount),
+                    $this->money(
+                        $amount
+                    ),
 
                 'balance_after' =>
-                $this->money(
-                    max(
-                        0,
-                        (float) $loan->balance - $amount
-                    )
-                ),
+                    $this->money(
+                        max(
+                            0,
+                            (float) $loan->balance
+                            - $amount
+                        )
+                    ),
 
                 'deduction_frequency' =>
-                $loan->deduction_frequency,
+                    $loan->deduction_frequency,
 
                 'deduction_cutoff' =>
-                $loan->deduction_cutoff,
+                    $loan->deduction_cutoff,
             ];
         }
 
         return [
             'cash_advance' =>
-            $this->money($cashAdvance),
+                $this->money(
+                    $cashAdvance
+                ),
 
             'sss_loan' =>
-            $this->money($sssLoan),
+                $this->money(
+                    $sssLoan
+                ),
 
             'pagibig_loan' =>
-            $this->money($pagibigLoan),
+                $this->money(
+                    $pagibigLoan
+                ),
 
             'total' =>
-            $this->money(
-                $cashAdvance
+                $this->money(
+                    $cashAdvance
                     + $sssLoan
                     + $pagibigLoan
-            ),
+                ),
 
             'details' =>
-            $details,
+                $details,
         ];
     }
 
@@ -653,41 +919,30 @@ class PayrollCalculator
         }
 
         /*
-         * one_time:
-         *
-         * The loan is deducted on its configured cutoff.
-         * The finalized LoanDeduction record should prevent
-         * it from being deducted again on future payrolls.
+         * One-time loan.
          */
-        if ($loan->deduction_frequency === 'one_time') {
+        if (
+            $loan->deduction_frequency === 'one_time'
+        ) {
             return ! $loan->deductions()
                 ->exists();
         }
 
         /*
-         * monthly:
-         *
-         * Since the employee chooses the cutoff, it is deducted
-         * only on the configured cutoff.
-         *
-         * Example:
-         * deduction_cutoff = second
-         *
-         * August 15  -> no deduction
-         * August 30  -> deduction
+         * Monthly loan.
          */
-        if ($loan->deduction_frequency === 'monthly') {
+        if (
+            $loan->deduction_frequency === 'monthly'
+        ) {
             return true;
         }
 
         /*
-         * per_cutoff:
-         *
-         * first  -> every first cutoff
-         * second -> every second cutoff
-         * both   -> every cutoff
+         * Per-cutoff loan.
          */
-        if ($loan->deduction_frequency === 'per_cutoff') {
+        if (
+            $loan->deduction_frequency === 'per_cutoff'
+        ) {
             return true;
         }
 
@@ -714,7 +969,9 @@ class PayrollCalculator
         Employee $employee,
         PayrollSetting $settings
     ): float {
-        if ($employee->rate_type === 'daily') {
+        if (
+            $employee->rate_type === 'daily'
+        ) {
             return (float) (
                 $employee->daily_rate
                 ?? $employee->basic_rate
@@ -734,8 +991,9 @@ class PayrollCalculator
     /**
      * Normalize money values to 2 decimal places.
      */
-    private function money(float $value): float
-    {
+    private function money(
+        float $value
+    ): float {
         return (float) number_format(
             $value,
             2,

@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Employee;
+use App\Models\PayrollItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Response;
-use App\Models\Branch;
-use App\Models\PayrollItem;
 use Illuminate\Support\Facades\DB;
+use Inertia\Response;
 
 class EmployeeController extends Controller
 {
@@ -32,9 +32,9 @@ class EmployeeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $employee = $this->validatedData($request);
+        $validated = $this->validatedData($request);
 
-        Employee::create($employee);
+        Employee::create($validated);
 
         return back()->with('success', 'Employee added successfully.');
     }
@@ -43,91 +43,8 @@ class EmployeeController extends Controller
         Request $request,
         Employee $employee
     ): RedirectResponse {
-        $validated = $request->validate([
-            'employee_id' => [
-                'required',
-                'string',
-                'max:50',
-                'unique:employees,employee_id,' . $employee->id,
-            ],
-            'category_id' => [
-                'required',
-                'integer',
-                'exists:categories,id',
-            ],
+        $validated = $this->validatedData($request, $employee->id);
 
-            'branch_id' => [
-                'required',
-                'string',
-                'exists:branches,id'
-            ],
-
-            'full_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'employment_type' => [
-                'required',
-                'in:regular,probationary,contractual',
-            ],
-
-            'rate_type' => [
-                'required',
-                'in:daily,monthly',
-            ],
-
-            'basic_rate' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
-
-            'daily_rate' => [
-                'nullable',
-                'numeric',
-                'min:0',
-            ],
-
-            'sss_no' => [
-                'nullable',
-                'string',
-                'max:50',
-            ],
-
-            'philhealth_no' => [
-                'nullable',
-                'string',
-                'max:50',
-            ],
-
-            'pagibig_no' => [
-                'nullable',
-                'string',
-                'max:50',
-            ],
-
-            'tin' => [
-                'nullable',
-                'string',
-                'max:50',
-            ],
-
-            'date_hired' => [
-                'required',
-                'date',
-            ],
-        ]);
-
-        /*
-         * Keep only the appropriate rate.
-         */
-        if ($validated['rate_type'] === 'daily') {
-            $validated['basic_rate'] = null;
-        } else {
-            $validated['daily_rate'] = null;
-        }
         $employee->update($validated);
 
         return back()->with(
@@ -214,29 +131,68 @@ class EmployeeController extends Controller
         );
     }
 
-    private function validatedData(Request $request): array
+    /**
+     * Shared validation for store() and update().
+     *
+     * $employeeId is null on create, and the employee's id on update
+     * (so the employee_id uniqueness check ignores the current record).
+     */
+    private function validatedData(Request $request, ?string $employeeId = null): array
     {
         $validated = $request->validate([
-            'employee_id' => ['required', 'string', 'max:255'],
-            'category_id' => ['required', 'exists:categories,id'],
-            'branch_id' => ['required', 'exists:branches,id'],
+            'employee_id' => [
+                'required',
+                'string',
+                'max:50',
+                $employeeId
+                    ? 'unique:employees,employee_id,' . $employeeId
+                    : 'unique:employees,employee_id',
+            ],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'branch_id' => ['required', 'string', 'exists:branches,id'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'employment_type' => ['required', 'in:regular,probationary,contractual'],
             'rate_type' => ['required', 'in:daily,monthly'],
             'basic_rate' => ['nullable', 'numeric', 'min:0'],
             'daily_rate' => ['nullable', 'numeric', 'min:0'],
-            'sss_no' => ['nullable', 'string', 'max:255'],
-            'philhealth_no' => ['nullable', 'string', 'max:255'],
-            'pagibig_no' => ['nullable', 'string', 'max:255'],
-            'tin' => ['nullable', 'string', 'max:255'],
             'date_hired' => ['required', 'date'],
+
+            // Personal information
+            'birthday' => ['nullable', 'date'],
+            'place_of_birth' => ['nullable', 'string', 'max:255'],
+            'sex' => ['nullable', 'in:male,female'],
+            'civil_status' => ['nullable', 'in:single,married,widow,separated'],
+            'nationality' => ['nullable', 'string', 'max:255'],
+            'home_address' => ['nullable', 'string', 'max:500'],
+            'contact_number' => ['nullable', 'string', 'max:50'],
+            'email_address' => ['nullable', 'email', 'max:255'],
+
+            // Government IDs
+            'sss_no' => ['nullable', 'string', 'max:50'],
+            'philhealth_no' => ['nullable', 'string', 'max:50'],
+            'pagibig_no' => ['nullable', 'string', 'max:50'],
+            'tin' => ['nullable', 'string', 'max:50'],
+
+            // Payroll configuration
+            // NOTE: cutoff columns are assumed to be a day-of-month (1-31).
+            // Adjust the rule/type here if they're actually stored differently.
+            'is_cola_eligible' => ['sometimes', 'boolean'],
+            'cola_amount' => ['sometimes', 'numeric', 'min:0'],
+            'sss_deduction_cutoff' => ['nullable', 'integer', 'between:1,31'],
+            'sss_msc_override' => ['nullable', 'numeric', 'min:0'],
+            'philhealth_deduction_cutoff' => ['nullable', 'integer', 'between:1,31'],
+            'pagibig_deduction_cutoff' => ['nullable', 'integer', 'between:1,31'],
         ], [
             'category_id.required' => 'Please select a department.',
             'category_id.exists' => 'Department not selected',
-            'branches_id.required' => 'Branch is mandatory to saved',
-            'branches_id.exists' => 'Branch not selected',
+            'branch_id.required' => 'Branch is mandatory to save.',
+            'branch_id.exists' => 'Branch not selected',
         ]);
 
+        /*
+         * Keep only the rate relevant to the selected rate type, and
+         * require that one to actually be filled in.
+         */
         if ($validated['rate_type'] === 'daily') {
             $request->validate([
                 'daily_rate' => ['required', 'numeric', 'gt:0'],

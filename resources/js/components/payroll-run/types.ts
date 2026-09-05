@@ -68,6 +68,7 @@ export type PayrollItem = {
     cash_advance_deduction: string | number;
     sss_loan_deduction: string | number;
     pagibig_loan_deduction: string | number;
+    cola: number
 };
 
 export type PayrollRun = {

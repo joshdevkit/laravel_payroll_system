@@ -45,6 +45,7 @@ class PayrollItem extends Model
         'night_diff_minutes',
 
         'basic_pay',
+        'cola',
         'overtime_pay',
         'holiday_pay',
         'night_diff',
@@ -89,6 +90,7 @@ class PayrollItem extends Model
         'night_diff_minutes' => 'integer',
 
         'basic_pay' => 'decimal:2',
+        'cola' => 'decimal:2',
         'overtime_pay' => 'decimal:2',
         'holiday_pay' => 'decimal:2',
         'night_diff' => 'decimal:2',

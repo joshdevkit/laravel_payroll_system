@@ -104,6 +104,13 @@ const numberValue = (value: unknown): number =>
 |--------------------------------------------------------------------------
 | COLA
 |--------------------------------------------------------------------------
+|
+| COLA is already calculated by PayrollCalculator as:
+|
+| cola_amount × present_days
+|
+| This function simply reads the calculated payroll item value.
+|--------------------------------------------------------------------------
 */
 
 const colaOf = (
@@ -118,9 +125,11 @@ const colaOf = (
 | Total Earnings
 |--------------------------------------------------------------------------
 |
-| Total Earnings = Basic Salary - Tardy
+| Total Earnings =
 |
-| MATCHES: PayrollRegisterTable.totalEarningsOf
+| Basic Salary - Tardy
+|
+| This matches PayrollRegisterTable.
 |--------------------------------------------------------------------------
 */
 
@@ -138,13 +147,12 @@ const totalEarningsOf = (
 | Total Gross Earning =
 |
 | Total Earnings
+| + COLA
 | + Overtime Pay
 | + Holiday Pay
 | + Night Shift Pay
 |
-| COLA is NOT included here.
-|
-| MATCHES: PayrollRegisterTable.totalGrossEarningOf
+| COLA IS INCLUDED in Total Gross Earning.
 |--------------------------------------------------------------------------
 */
 
@@ -152,6 +160,7 @@ const totalGrossEarningOf = (
     item: PayrollItem,
 ): number =>
     totalEarningsOf(item) +
+    colaOf(item) +
     numberValue(item.overtime_pay) +
     numberValue(item.holiday_pay) +
     numberValue(item.night_diff);
@@ -163,28 +172,26 @@ const totalGrossEarningOf = (
 |
 | Total Deductions =
 |
-| PhilHealth
+| Tardy
+| + PhilHealth
 | + Pag-IBIG
 | + SSS
 | + SSS Loan
 | + Pag-IBIG Loan
 | + Cash Advance
-| + Tardy
-|
-| MATCHES: PayrollRegisterTable.totalDeductionsOf
 |--------------------------------------------------------------------------
 */
 
 const totalDeductionsOf = (
     item: PayrollItem,
 ): number =>
+    numberValue(item.tardy_deduction) +
     numberValue(item.philhealth_deduction) +
     numberValue(item.pagibig_deduction) +
     numberValue(item.sss_deduction) +
     numberValue(item.sss_loan_deduction) +
     numberValue(item.pagibig_loan_deduction) +
-    numberValue(item.cash_advance_deduction) +
-    numberValue(item.tardy_deduction);
+    numberValue(item.cash_advance_deduction);
 
 /*
 |--------------------------------------------------------------------------
@@ -198,7 +205,7 @@ const totalDeductionsOf = (
 | + Holiday Pay
 | + Night Shift Pay
 |
-| MATCHES: PayrollRegisterTable.othersEarningsOf
+| This is a display subtotal only.
 |--------------------------------------------------------------------------
 */
 
@@ -217,19 +224,17 @@ const othersEarningsOf = (
 |
 | Total Net Earnings =
 |
-| Total Gross Earning
-| + COLA
-| - Total Deductions
+| Total Gross Earning - Total Deductions
 |
-| MATCHES: PayrollRegisterTable.totalNetEarningsOf
+| Since COLA is already inside Total Gross Earning,
+| it MUST NOT be added again here.
 |--------------------------------------------------------------------------
 */
 
 const totalNetEarningsOf = (
     item: PayrollItem,
 ): number =>
-    totalGrossEarningOf(item) +
-    colaOf(item) -
+    totalGrossEarningOf(item) -
     totalDeductionsOf(item);
 
 /*
@@ -288,10 +293,6 @@ const rateOf = (
 | V    Others Earnings
 | W    Total Net Earnings
 | X    Signature
-|
-| This mirrors PayrollRegisterTable.tsx column-for-column
-| (there is no separate "other deductions" column, since the
-| table has none).
 |--------------------------------------------------------------------------
 */
 
@@ -441,10 +442,7 @@ export function exportPayrollRunToExcel(
             item.employee?.category?.name ??
                 '',
 
-            /*
-             * E - No. of Days
-             * IMPORTANT: This is a NUMBER, not currency.
-             */
+            /* E - No. of Days */
             numberValue(item.present_days),
 
             /* F - Rate */
@@ -512,7 +510,6 @@ export function exportPayrollRunToExcel(
     |--------------------------------------------------------------------------
     */
 
-    // Excel row number.
     const footerRow =
         4 + items.length;
 
@@ -557,21 +554,18 @@ export function exportPayrollRunToExcel(
     |
     | I = G - H
     |
-    | N = I + K + L + M                    (no COLA - matches table)
+    | N = I + J + K + L + M
     |
-    | U = H + O + P + Q + R + S + T         (Tardy + all deductions)
+    | U = H + O + P + Q + R + S + T
     |
-    | V = J + K + L + M                     (COLA + OT + Holiday + NSD)
+    | V = J + K + L + M
     |
-    | W = N + J - U                         (Gross + COLA - Total Deductions)
+    | W = N - U
     |
     |--------------------------------------------------------------------------
     */
 
     items.forEach((_, index) => {
-        /*
-         * Excel employee rows start at row 4.
-         */
         const row = 4 + index;
 
         /*
@@ -588,16 +582,16 @@ export function exportPayrollRunToExcel(
          * N - Total Gross Earning
          *
          * Total Earnings
+         * + COLA
          * + OT
          * + Holiday
-         * + NSD
-         *
-         * COLA intentionally excluded, matching the table.
+         * + Night Shift
          */
         worksheet[`N${row}`] = {
             t: 'n',
             f:
                 `I${row}+` +
+                `J${row}+` +
                 `K${row}+` +
                 `L${row}+` +
                 `M${row}`,
@@ -606,8 +600,13 @@ export function exportPayrollRunToExcel(
         /*
          * U - Total Deductions
          *
-         * Tardy + PhilHealth + Pag-IBIG + SSS
-         * + SSS Loan + Pag-IBIG Loan + Cash Advance
+         * Tardy
+         * + PhilHealth
+         * + Pag-IBIG
+         * + SSS
+         * + SSS Loan
+         * + Pag-IBIG Loan
+         * + Cash Advance
          */
         worksheet[`U${row}`] = {
             t: 'n',
@@ -624,7 +623,7 @@ export function exportPayrollRunToExcel(
         /*
          * V - Others Earnings
          *
-         * COLA + OT + Holiday + NSD
+         * COLA + OT + Holiday + Night Shift
          */
         worksheet[`V${row}`] = {
             t: 'n',
@@ -638,15 +637,15 @@ export function exportPayrollRunToExcel(
         /*
          * W - Total Net Earnings
          *
-         * Total Gross Earning
-         * + COLA
-         * - Total Deductions
+         * Total Gross Earning - Total Deductions
+         *
+         * COLA is already included in N,
+         * so it must NOT be added again.
          */
         worksheet[`W${row}`] = {
             t: 'n',
             f:
-                `N${row}+` +
-                `J${row}-` +
+                `N${row}-` +
                 `U${row}`,
         };
     });
@@ -871,11 +870,6 @@ export function exportPayrollRunToExcel(
     */
 
     items.forEach((_, index) => {
-        /*
-         * Zero-based worksheet row.
-         *
-         * Excel row 4 = zero-based row 3.
-         */
         const row = 3 + index;
 
         const shaded =
@@ -943,10 +937,6 @@ export function exportPayrollRunToExcel(
         columnIndex < COLUMN_COUNT;
         columnIndex += 1
     ) {
-        /*
-         * footerRow is an Excel row number.
-         * encode_cell() requires a zero-based index.
-         */
         const address =
             XLSX.utils.encode_cell({
                 r: footerRow - 1,
@@ -992,18 +982,6 @@ export function exportPayrollRunToExcel(
     /*
     |--------------------------------------------------------------------------
     | Currency Formatting
-    |--------------------------------------------------------------------------
-    |
-    | IMPORTANT:
-    |
-    | E is intentionally NOT included.
-    |
-    | E = No. of Days
-    | F = Rate
-    | G = Basic Salary
-    | ...
-    | W = Net Earnings
-    |
     |--------------------------------------------------------------------------
     */
 

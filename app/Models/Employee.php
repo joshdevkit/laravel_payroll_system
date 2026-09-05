@@ -19,6 +19,7 @@ use App\Models\LoanAndCashAdvance;
 use App\Models\LoanDeduction;
 
 use App\Models\Branch;
+
 class Employee extends Model
 {
     use HasFactory;
@@ -38,6 +39,16 @@ class Employee extends Model
         'rate_type',
         'basic_rate',
         'daily_rate',
+        'birthday',
+        'place_of_birth',
+        'sex',
+        'civil_status',
+        'nationality',
+        'home_address',
+        'contact_number',
+        'email_address',
+        'is_cola_eligible',
+        'cola_amount',
         'sss_no',
         'sss_deduction_cutoff',
         'sss_msc_override',
@@ -54,6 +65,7 @@ class Employee extends Model
         'daily_rate' => 'decimal:2',
         'sss_msc_override' => 'decimal:2',
         'date_hired' => 'date:Y-m-d',
+        'cola_amount' => 'decimal:2'
     ];
 
     protected static function booted(): void
