@@ -105,9 +105,7 @@ const numberValue = (value: unknown): number =>
 | COLA
 |--------------------------------------------------------------------------
 |
-| COLA is already calculated by PayrollCalculator as:
-|
-| cola_amount × present_days
+| COLA is already calculated by PayrollCalculator.
 |
 | This function simply reads the calculated payroll item value.
 |--------------------------------------------------------------------------
@@ -129,7 +127,9 @@ const colaOf = (
 |
 | Basic Salary - Tardy
 |
-| This matches PayrollRegisterTable.
+| IMPORTANT:
+| Tardy is already deducted here.
+|
 |--------------------------------------------------------------------------
 */
 
@@ -152,7 +152,8 @@ const totalEarningsOf = (
 | + Holiday Pay
 | + Night Shift Pay
 |
-| COLA IS INCLUDED in Total Gross Earning.
+| IMPORTANT:
+| COLA is included exactly ONCE here.
 |--------------------------------------------------------------------------
 */
 
@@ -172,20 +173,28 @@ const totalGrossEarningOf = (
 |
 | Total Deductions =
 |
-| Tardy
-| + PhilHealth
+| PhilHealth
 | + Pag-IBIG
 | + SSS
 | + SSS Loan
 | + Pag-IBIG Loan
 | + Cash Advance
+|
+| IMPORTANT:
+|
+| Tardy is NOT included here.
+|
+| Tardy has already been deducted from Total Earnings:
+|
+|     Total Earnings = Basic Salary - Tardy
+|
+| Therefore including Tardy here would deduct it TWICE.
 |--------------------------------------------------------------------------
 */
 
 const totalDeductionsOf = (
     item: PayrollItem,
 ): number =>
-    numberValue(item.tardy_deduction) +
     numberValue(item.philhealth_deduction) +
     numberValue(item.pagibig_deduction) +
     numberValue(item.sss_deduction) +
@@ -205,7 +214,9 @@ const totalDeductionsOf = (
 | + Holiday Pay
 | + Night Shift Pay
 |
-| This is a display subtotal only.
+| This is a DISPLAY SUBTOTAL only.
+|
+| It is not added again to Net Earnings.
 |--------------------------------------------------------------------------
 */
 
@@ -226,8 +237,10 @@ const othersEarningsOf = (
 |
 | Total Gross Earning - Total Deductions
 |
-| Since COLA is already inside Total Gross Earning,
-| it MUST NOT be added again here.
+| COLA is already inside Gross.
+| Tardy is already deducted from Total Earnings.
+|
+| Therefore neither COLA nor Tardy is added/deducted again here.
 |--------------------------------------------------------------------------
 */
 
@@ -454,7 +467,11 @@ export function exportPayrollRunToExcel(
             /* H - Tardy */
             numberValue(item.tardy_deduction),
 
-            /* I - Total Earnings */
+            /*
+             * I - Total Earnings
+             *
+             * Basic Salary - Tardy
+             */
             totalEarnings,
 
             /* J - COLA */
@@ -469,7 +486,15 @@ export function exportPayrollRunToExcel(
             /* M - Night Shift Pay */
             numberValue(item.night_diff),
 
-            /* N - Total Gross Earning */
+            /*
+             * N - Total Gross Earning
+             *
+             * Total Earnings
+             * + COLA
+             * + OT
+             * + Holiday
+             * + Night Shift
+             */
             totalGross,
 
             /* O - PhilHealth */
@@ -490,13 +515,26 @@ export function exportPayrollRunToExcel(
             /* T - Cash Advance */
             numberValue(item.cash_advance_deduction),
 
-            /* U - Total Deductions */
+            /*
+             * U - Total Deductions
+             *
+             * IMPORTANT:
+             * NO TARDY HERE.
+             */
             totalDeductions,
 
-            /* V - Others Earnings */
+            /*
+             * V - Others Earnings
+             *
+             * COLA + OT + Holiday + NSD
+             */
             othersEarnings,
 
-            /* W - Total Net Earnings */
+            /*
+             * W - Total Net Earnings
+             *
+             * Gross - Deductions
+             */
             netEarnings,
 
             /* X - Signature */
@@ -556,7 +594,7 @@ export function exportPayrollRunToExcel(
     |
     | N = I + J + K + L + M
     |
-    | U = H + O + P + Q + R + S + T
+    | U = O + P + Q + R + S + T
     |
     | V = J + K + L + M
     |
@@ -600,18 +638,21 @@ export function exportPayrollRunToExcel(
         /*
          * U - Total Deductions
          *
-         * Tardy
-         * + PhilHealth
-         * + Pag-IBIG
-         * + SSS
-         * + SSS Loan
-         * + Pag-IBIG Loan
-         * + Cash Advance
+         * IMPORTANT:
+         *
+         * Tardy (H) is NOT included.
+         *
+         * Tardy was already deducted in:
+         *
+         *     I = G - H
+         *
+         * Therefore:
+         *
+         * U = O + P + Q + R + S + T
          */
         worksheet[`U${row}`] = {
             t: 'n',
             f:
-                `H${row}+` +
                 `O${row}+` +
                 `P${row}+` +
                 `Q${row}+` +
@@ -637,10 +678,10 @@ export function exportPayrollRunToExcel(
         /*
          * W - Total Net Earnings
          *
-         * Total Gross Earning - Total Deductions
+         * Gross - Total Deductions
          *
-         * COLA is already included in N,
-         * so it must NOT be added again.
+         * COLA is already included in Gross.
+         * Tardy is already deducted from Total Earnings.
          */
         worksheet[`W${row}`] = {
             t: 'n',

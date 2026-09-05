@@ -21,7 +21,6 @@ const number = (value: unknown): number => {
 };
 
 export function PayrollRegisterTable({ items }: Props) {
-
     const th =
         "border border-black/70 dark:border-white/15 px-2 py-1.5 font-semibold uppercase tracking-tight whitespace-nowrap";
 
@@ -50,40 +49,57 @@ export function PayrollRegisterTable({ items }: Props) {
     /*
      * ---------------------------------------------------------
      * TOTAL EARNINGS
+     * ---------------------------------------------------------
      *
      * Basic Salary - Tardy
+     *
+     * IMPORTANT:
+     * Tardy is already deducted here.
+     *
+     * Therefore Tardy MUST NOT be included again
+     * in Total Deductions.
      * ---------------------------------------------------------
      */
 
     const totalEarningsOf = (item: PayrollItem): number => {
-        return number(item.basic_pay) - number(item.tardy_deduction);
+        return (
+            number(item.basic_pay) -
+            number(item.tardy_deduction)
+        );
     };
 
     /*
      * ---------------------------------------------------------
      * TOTAL GROSS EARNING
+     * ---------------------------------------------------------
      *
      * Total Earnings
+     * + COLA
      * + Overtime
      * + Holiday
      * + Night Shift
      *
-     * COLA is NOT included here according to your formula.
+     * COLA IS INCLUDED HERE.
+     *
+     * Tardy has already been deducted from Total Earnings,
+     * so it is NOT deducted again here.
      * ---------------------------------------------------------
      */
 
     const totalGrossEarningOf = (item: PayrollItem): number => {
         return (
             totalEarningsOf(item) +
+            colaOf(item) +
             number(item.overtime_pay) +
             number(item.holiday_pay) +
-            number(item.night_diff) + number(item.cola)
+            number(item.night_diff)
         );
     };
 
     /*
      * ---------------------------------------------------------
      * TOTAL DEDUCTIONS
+     * ---------------------------------------------------------
      *
      * PhilHealth
      * + Pag-IBIG
@@ -93,12 +109,14 @@ export function PayrollRegisterTable({ items }: Props) {
      * + Cash Advance
      *
      * IMPORTANT:
-     * Tardy is NOT included because it was already deducted
-     * from Total Earnings.
      *
-     * We also do not include tax/leave/other deductions here
-     * because your specified payroll register formula does not
-     * include them.
+     * Tardy is NOT included.
+     *
+     * Tardy has already been deducted from:
+     *
+     *     Total Earnings = Basic Salary - Tardy
+     *
+     * Including tardy here would deduct it AGAIN.
      * ---------------------------------------------------------
      */
 
@@ -109,25 +127,26 @@ export function PayrollRegisterTable({ items }: Props) {
             number(item.sss_deduction) +
             number(item.sss_loan_deduction) +
             number(item.pagibig_loan_deduction) +
-            number(item.cash_advance_deduction) +
-            number(item.tardy_deduction)
+            number(item.cash_advance_deduction)
         );
     };
 
     /*
      * ---------------------------------------------------------
      * OTHERS
+     * ---------------------------------------------------------
      *
      * COLA
      * + Overtime Pay
      * + Holiday Pay
      * + Night Shift Pay
      *
-     * This is displayed as a separate subtotal.
+     * This is only a displayed subtotal.
      *
-     * It is NOT added again to Total Net Earnings because
-     * OT/Holiday/Night Shift are already part of Gross Earnings.
-     * Only COLA is additionally added to Gross Earnings.
+     * It does NOT get added separately to Net Earnings.
+     *
+     * All of these values are already included in
+     * Total Gross Earning.
      * ---------------------------------------------------------
      */
 
@@ -143,16 +162,26 @@ export function PayrollRegisterTable({ items }: Props) {
     /*
      * ---------------------------------------------------------
      * TOTAL NET EARNINGS
+     * ---------------------------------------------------------
      *
-     * Total Gross Earning
-     * + COLA
-     * - Total Deductions
+     * Total Gross Earning - Total Deductions
+     *
+     * IMPORTANT:
+     *
+     * COLA is already inside Total Gross Earning.
+     * Tardy is already deducted from Total Earnings.
+     *
+     * Therefore:
+     *
+     *     NO + COLA here
+     *     NO - Tardy here
      * ---------------------------------------------------------
      */
 
     const totalNetEarningsOf = (item: PayrollItem): number => {
         return (
-            totalGrossEarningOf(item)  - totalDeductionsOf(item)
+            totalGrossEarningOf(item) -
+            totalDeductionsOf(item)
         );
     };
 
@@ -162,23 +191,28 @@ export function PayrollRegisterTable({ items }: Props) {
      * ---------------------------------------------------------
      */
 
-    const footerTotalEarnings = sum(totalEarningsOf);
+    const footerTotalEarnings =
+        sum(totalEarningsOf);
 
-    const footerTotalGross = sum(totalGrossEarningOf);
+    const footerTotalGross =
+        sum(totalGrossEarningOf);
 
-    const footerTotalDeductions = sum(totalDeductionsOf);
+    const footerTotalDeductions =
+        sum(totalDeductionsOf);
 
-    const footerOthers = sum(othersEarningsOf);
+    const footerOthers =
+        sum(othersEarningsOf);
 
-    const footerNetEarnings = sum(totalNetEarningsOf);
+    const footerNetEarnings =
+        sum(totalNetEarningsOf);
 
     return (
         <div className="hidden min-w-[1850px] md:block">
             <table className="w-full border-collapse text-[11px] leading-tight">
                 <thead>
                     {/* =====================================================
-        HEADER LEVEL 1
-    ====================================================== */}
+                        HEADER LEVEL 1
+                    ====================================================== */}
 
                     <tr className="bg-amber-400 text-black dark:bg-amber-500/20 dark:text-amber-100">
                         <th rowSpan={3} className={th}>
@@ -227,13 +261,11 @@ export function PayrollRegisterTable({ items }: Props) {
                     </tr>
 
                     {/* =====================================================
-        HEADER LEVEL 2
-    ====================================================== */}
+                        HEADER LEVEL 2
+                    ====================================================== */}
 
                     <tr className="bg-amber-400 text-black dark:bg-amber-500/20 dark:text-amber-100">
-                        {/* =======================
-            EARNINGS
-        ======================== */}
+                        {/* EARNINGS */}
 
                         <th rowSpan={2} className={th}>
                             No. of Days
@@ -275,9 +307,7 @@ export function PayrollRegisterTable({ items }: Props) {
                             Total Gross Earning
                         </th>
 
-                        {/* =======================
-            DEDUCTIONS
-        ======================== */}
+                        {/* DEDUCTIONS */}
 
                         <th colSpan={3} className={th}>
                             Contribution
@@ -297,23 +327,36 @@ export function PayrollRegisterTable({ items }: Props) {
                     </tr>
 
                     {/* =====================================================
-        HEADER LEVEL 3
-    ====================================================== */}
+                        HEADER LEVEL 3
+                    ====================================================== */}
 
                     <tr className="bg-amber-400 text-black dark:bg-amber-500/20 dark:text-amber-100">
                         {/* CONTRIBUTION */}
-                        <th className={th}>PhilHealth</th>
 
-                        <th className={th}>Pag-IBIG</th>
+                        <th className={th}>
+                            PhilHealth
+                        </th>
 
-                        <th className={th}>SSS</th>
+                        <th className={th}>
+                            Pag-IBIG
+                        </th>
+
+                        <th className={th}>
+                            SSS
+                        </th>
 
                         {/* LOANS */}
-                        <th className={th}>SSS Loan</th>
 
-                        <th className={th}>Pag-IBIG Loan</th>
+                        <th className={th}>
+                            SSS Loan
+                        </th>
+
+                        <th className={th}>
+                            Pag-IBIG Loan
+                        </th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {items.map((item, index) => {
                         /*
@@ -328,7 +371,9 @@ export function PayrollRegisterTable({ items }: Props) {
                                       item.employee.daily_rate ??
                                           item.employee.basic_rate,
                                   )
-                                : number(item.employee?.basic_rate) / 26;
+                                : number(
+                                      item.employee?.basic_rate,
+                                  ) / 26;
 
                         /*
                          * -------------------------------------------------
@@ -336,17 +381,23 @@ export function PayrollRegisterTable({ items }: Props) {
                          * -------------------------------------------------
                          */
 
-                        const basicSalary = number(item.basic_pay);
+                        const basicSalary =
+                            number(item.basic_pay);
 
-                        const tardyDeduction = number(item.tardy_deduction);
+                        const tardyDeduction =
+                            number(item.tardy_deduction);
 
-                        const cola = colaOf(item);
+                        const cola =
+                            colaOf(item);
 
-                        const overtimePay = number(item.overtime_pay);
+                        const overtimePay =
+                            number(item.overtime_pay);
 
-                        const holidayPay = number(item.holiday_pay);
+                        const holidayPay =
+                            number(item.holiday_pay);
 
-                        const nightShiftPay = number(item.night_diff);
+                        const nightShiftPay =
+                            number(item.night_diff);
 
                         /*
                          * -------------------------------------------------
@@ -354,15 +405,20 @@ export function PayrollRegisterTable({ items }: Props) {
                          * -------------------------------------------------
                          */
 
-                        const totalEarnings = totalEarningsOf(item);
+                        const totalEarnings =
+                            totalEarningsOf(item);
 
-                        const totalGrossEarning = totalGrossEarningOf(item);
+                        const totalGrossEarning =
+                            totalGrossEarningOf(item);
 
-                        const totalDeductions = totalDeductionsOf(item);
+                        const totalDeductions =
+                            totalDeductionsOf(item);
 
-                        const othersEarnings = othersEarningsOf(item);
+                        const othersEarnings =
+                            othersEarningsOf(item);
 
-                        const totalNetEarnings = totalNetEarningsOf(item);
+                        const totalNetEarnings =
+                            totalNetEarningsOf(item);
 
                         return (
                             <tr
@@ -370,16 +426,22 @@ export function PayrollRegisterTable({ items }: Props) {
                                 className="align-top text-center odd:bg-white even:bg-amber-50/40 dark:odd:bg-transparent dark:even:bg-amber-500/5"
                             >
                                 {/* No. */}
-                                <td className={td}>{index + 1}</td>
+                                <td className={td}>
+                                    {index + 1}
+                                </td>
 
                                 {/* Employee ID */}
-                                <td className={`${td} font-semibold`}>
+                                <td
+                                    className={`${td} font-semibold`}
+                                >
                                     {item.employee?.employee_id ??
                                         item.employee_id}
                                 </td>
 
                                 {/* Employee Name */}
-                                <td className={`${td} text-left font-medium`}>
+                                <td
+                                    className={`${td} text-left font-medium`}
+                                >
                                     <Link
                                         href={`/employees/${item.employee?.id}/attendance`}
                                         target="_blank"
@@ -390,8 +452,11 @@ export function PayrollRegisterTable({ items }: Props) {
                                 </td>
 
                                 {/* Department */}
-                                <td className={`${td} text-left`}>
-                                    {item.employee?.category?.name ?? "-"}
+                                <td
+                                    className={`${td} text-left`}
+                                >
+                                    {item.employee?.category?.name ??
+                                        "-"}
                                 </td>
 
                                 {/* =================================================
@@ -399,47 +464,73 @@ export function PayrollRegisterTable({ items }: Props) {
                                 ================================================== */}
 
                                 {/* No. of Days */}
-                                <td className={td}>{item.present_days}</td>
+                                <td className={td}>
+                                    {item.present_days}
+                                </td>
 
                                 {/* Rate */}
                                 <td className={td}>
-                                    {rate ? peso(rate) : "-"}
+                                    {rate
+                                        ? peso(rate)
+                                        : "-"}
                                 </td>
 
                                 {/* Basic Salary */}
-                                <td className={td}>{num(basicSalary)}</td>
+                                <td className={td}>
+                                    {num(basicSalary)}
+                                </td>
 
                                 {/* Tardy */}
                                 <td className={td}>
-                                    {tardyDeduction ? num(tardyDeduction) : "-"}
+                                    {tardyDeduction
+                                        ? num(tardyDeduction)
+                                        : "-"}
                                 </td>
 
-                                {/* Total Earnings = Basic - Tardy */}
-                                <td className={`${td} font-medium`}>
+                                {/* Total Earnings */}
+                                <td
+                                    className={`${td} font-medium`}
+                                >
                                     {num(totalEarnings)}
                                 </td>
 
                                 {/* COLA */}
-                                <td className={td}>{cola ? num(cola) : "-"}</td>
+                                <td className={td}>
+                                    {cola
+                                        ? num(cola)
+                                        : "-"}
+                                </td>
 
                                 {/* Overtime */}
                                 <td className={td}>
-                                    {overtimePay ? num(overtimePay) : "-"}
+                                    {overtimePay
+                                        ? num(overtimePay)
+                                        : "-"}
                                 </td>
 
                                 {/* Holiday */}
                                 <td className={td}>
-                                    {holidayPay ? num(holidayPay) : "-"}
+                                    {holidayPay
+                                        ? num(holidayPay)
+                                        : "-"}
                                 </td>
 
                                 {/* Night Shift */}
                                 <td className={td}>
-                                    {nightShiftPay ? num(nightShiftPay) : "-"}
+                                    {nightShiftPay
+                                        ? num(
+                                              nightShiftPay,
+                                          )
+                                        : "-"}
                                 </td>
 
                                 {/* Total Gross Earning */}
-                                <td className={`${td} font-semibold`}>
-                                    {num(totalGrossEarning)}
+                                <td
+                                    className={`${td} font-semibold`}
+                                >
+                                    {num(
+                                        totalGrossEarning,
+                                    )}
                                 </td>
 
                                 {/* =================================================
@@ -448,69 +539,103 @@ export function PayrollRegisterTable({ items }: Props) {
 
                                 {/* PhilHealth */}
                                 <td className={td}>
-                                    {number(item.philhealth_deduction)
-                                        ? num(item.philhealth_deduction)
+                                    {number(
+                                        item.philhealth_deduction,
+                                    )
+                                        ? num(
+                                              item.philhealth_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* Pag-IBIG */}
                                 <td className={td}>
-                                    {number(item.pagibig_deduction)
-                                        ? num(item.pagibig_deduction)
+                                    {number(
+                                        item.pagibig_deduction,
+                                    )
+                                        ? num(
+                                              item.pagibig_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* SSS */}
                                 <td className={td}>
-                                    {number(item.sss_deduction)
-                                        ? num(item.sss_deduction)
+                                    {number(
+                                        item.sss_deduction,
+                                    )
+                                        ? num(
+                                              item.sss_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* SSS Loan */}
                                 <td className={td}>
-                                    {number(item.sss_loan_deduction)
-                                        ? num(item.sss_loan_deduction)
+                                    {number(
+                                        item.sss_loan_deduction,
+                                    )
+                                        ? num(
+                                              item.sss_loan_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* Pag-IBIG Loan */}
                                 <td className={td}>
-                                    {number(item.pagibig_loan_deduction)
-                                        ? num(item.pagibig_loan_deduction)
+                                    {number(
+                                        item.pagibig_loan_deduction,
+                                    )
+                                        ? num(
+                                              item.pagibig_loan_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* Cash Advance */}
                                 <td className={td}>
-                                    {number(item.cash_advance_deduction)
-                                        ? num(item.cash_advance_deduction)
+                                    {number(
+                                        item.cash_advance_deduction,
+                                    )
+                                        ? num(
+                                              item.cash_advance_deduction,
+                                          )
                                         : "-"}
                                 </td>
 
                                 {/* Total Deductions */}
-                                <td className={`${td} font-semibold`}>
-                                    {num(totalDeductions)}
+                                <td
+                                    className={`${td} font-semibold`}
+                                >
+                                    {num(
+                                        totalDeductions,
+                                    )}
                                 </td>
 
                                 {/* =================================================
                                     OTHERS
-                                    
-                                    COLA + OT + Holiday + Night Shift
                                 ================================================== */}
 
-                                <td className={`${td} font-medium`}>
-                                    {othersEarnings ? num(othersEarnings) : "-"}
+                                <td
+                                    className={`${td} font-medium`}
+                                >
+                                    {othersEarnings
+                                        ? num(
+                                              othersEarnings,
+                                          )
+                                        : "-"}
                                 </td>
 
                                 {/* =================================================
                                     TOTAL NET EARNINGS
-
-                                    Gross + COLA - deductions
                                 ================================================== */}
 
-                                <td className={`${td} font-bold`}>
-                                    {num(totalNetEarnings)}
+                                <td
+                                    className={`${td} font-bold`}
+                                >
+                                    {num(
+                                        totalNetEarnings,
+                                    )}
                                 </td>
 
                                 {/* Signature */}
@@ -526,91 +651,202 @@ export function PayrollRegisterTable({ items }: Props) {
 
                 <tfoot>
                     <tr className="bg-amber-200 text-center font-semibold text-black dark:bg-amber-500/15 dark:text-amber-100">
-                        <td colSpan={4} className={`${td} text-right`}>
+                        <td
+                            colSpan={4}
+                            className={`${td} text-right`}
+                        >
                             Total
                         </td>
 
                         {/* Days */}
                         <td className={td}>
-                            {sum((i) => number(i.present_days))}
+                            {sum(
+                                (i) =>
+                                    number(
+                                        i.present_days,
+                                    ),
+                            )}
                         </td>
 
                         {/* Rate */}
-                        <td className={td}>-</td>
+                        <td className={td}>
+                            -
+                        </td>
 
                         {/* Basic Salary */}
                         <td className={td}>
-                            {num(sum((i) => number(i.basic_pay)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.basic_pay,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Tardy */}
                         <td className={td}>
-                            {num(sum((i) => number(i.tardy_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.tardy_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Total Earnings */}
-                        <td className={td}>{num(footerTotalEarnings)}</td>
+                        <td className={td}>
+                            {num(
+                                footerTotalEarnings,
+                            )}
+                        </td>
 
                         {/* COLA */}
-                        <td className={td}>{num(sum(colaOf))}</td>
+                        <td className={td}>
+                            {num(
+                                sum(colaOf),
+                            )}
+                        </td>
 
                         {/* Overtime */}
                         <td className={td}>
-                            {num(sum((i) => number(i.overtime_pay)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.overtime_pay,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Holiday */}
                         <td className={td}>
-                            {num(sum((i) => number(i.holiday_pay)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.holiday_pay,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Night Shift */}
                         <td className={td}>
-                            {num(sum((i) => number(i.night_diff)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.night_diff,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Total Gross */}
-                        <td className={td}>{num(footerTotalGross)}</td>
+                        <td className={td}>
+                            {num(
+                                footerTotalGross,
+                            )}
+                        </td>
 
                         {/* PhilHealth */}
                         <td className={td}>
-                            {num(sum((i) => number(i.philhealth_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.philhealth_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Pag-IBIG */}
                         <td className={td}>
-                            {num(sum((i) => number(i.pagibig_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.pagibig_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* SSS */}
                         <td className={td}>
-                            {num(sum((i) => number(i.sss_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.sss_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* SSS Loan */}
                         <td className={td}>
-                            {num(sum((i) => number(i.sss_loan_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.sss_loan_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Pag-IBIG Loan */}
                         <td className={td}>
-                            {num(sum((i) => number(i.pagibig_loan_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.pagibig_loan_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Cash Advance */}
                         <td className={td}>
-                            {num(sum((i) => number(i.cash_advance_deduction)))}
+                            {num(
+                                sum(
+                                    (i) =>
+                                        number(
+                                            i.cash_advance_deduction,
+                                        ),
+                                ),
+                            )}
                         </td>
 
                         {/* Total Deductions */}
-                        <td className={td}>{num(footerTotalDeductions)}</td>
+                        <td className={td}>
+                            {num(
+                                footerTotalDeductions,
+                            )}
+                        </td>
 
                         {/* Others */}
-                        <td className={td}>{num(footerOthers)}</td>
+                        <td className={td}>
+                            {num(
+                                footerOthers,
+                            )}
+                        </td>
 
                         {/* Total Net Earnings */}
-                        <td className={`${td} font-bold`}>
-                            {num(footerNetEarnings)}
+                        <td
+                            className={`${td} font-bold`}
+                        >
+                            {num(
+                                footerNetEarnings,
+                            )}
                         </td>
 
                         {/* Signature */}
